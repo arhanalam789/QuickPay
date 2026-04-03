@@ -37,6 +37,10 @@ export const register = async (req: any, res: any) => {
   }
 }
 
+/** 
+ * Login controller --- handles user login logic
+ * post /api/auth/login
+ */
 export const login = async (req: any, res: any) => {
   try {
     const { email, password } = req.body;
@@ -66,6 +70,10 @@ export const login = async (req: any, res: any) => {
   }
 }
 
+/** 
+ * Logout controller --- handles user logout logic
+ * post /api/auth/logout
+ */
 export const logout = (req: any, res: any) => {
   res.clearCookie("token", {
     httpOnly: true,
