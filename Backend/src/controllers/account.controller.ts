@@ -1,6 +1,13 @@
 import Account from "../models/account.model";
 
-
+/**
+ * Controller for account-related operations
+ * Handles account creation, fetching user accounts, and fetching account details by ID
+ * Utilizes the Account model and authentication middleware to ensure secure access
+ * Each function is designed to handle specific API endpoints related to accounts
+ * Error handling is implemented to provide meaningful responses in case of failures
+ * The getAccountDetailsById function also calculates the current balance using the getBalance method from the Account model
+ */
 export const createAccount = async (req: any, res: any) => {
   try {
     const userId = req.user._id; 
@@ -18,7 +25,11 @@ export const createAccount = async (req: any, res: any) => {
   }
 };
 
-
+/**
+ * Get all accounts for the authenticated user
+ * Utilizes the user ID from the authentication middleware to fetch accounts specific to the user
+ * Returns a list of accounts associated with the user
+ */
 export const getUserAccounts = async (req: any, res: any) => {
   try {
     const userId = req.user._id;
@@ -29,7 +40,12 @@ export const getUserAccounts = async (req: any, res: any) => {
     res.status(500).json({ message: "Server error while fetching accounts" });
   }
 };
-
+/**
+ * Get account details by account ID
+ * Validates that the account belongs to the authenticated user before fetching details
+ * Utilizes the getBalance method from the Account model to calculate the current balance
+ * Returns account details along with the current balance
+ */
 export const getAccountDetailsById = async (req: any, res: any) => {
   try {
     const userId = req.user._id;
@@ -47,3 +63,4 @@ export const getAccountDetailsById = async (req: any, res: any) => {
     res.status(500).json({ message: "Server error while fetching account details" });
   }
 };
+

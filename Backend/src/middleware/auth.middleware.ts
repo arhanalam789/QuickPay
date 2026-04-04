@@ -1,7 +1,7 @@
 import User from "../models/user.model";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-
+import TokenBlacklist from "../models/blackList.model";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET
@@ -12,6 +12,11 @@ export const authenticate = async (req: any, res: any, next: any) => {
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
     }
+    const blacklisted = await TokenBlacklist.findOne({ token });
+    if (blacklisted) {
+      return res.status(401).json({ message: "Token is blacklisted" });
+    }
+
 
     const decoded: any = jwt.verify(token, JWT_SECRET!);
     const user = await User.findById(decoded.id);

@@ -1,7 +1,7 @@
 import User, { IUser } from "../models/user.model";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-
+import TokenBlacklist from "../models/blackList.model";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET
@@ -74,11 +74,16 @@ export const login = async (req: any, res: any) => {
  * Logout controller --- handles user logout logic
  * post /api/auth/logout
  */
-export const logout = (req: any, res: any) => {
+export const logout = async (req: any, res: any) => {
+  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(400).json({ message: "You are not logged in" });
+  } 
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
+  await TokenBlacklist.create({ token });
   res.json({ message: "Logout successful" });
 }
