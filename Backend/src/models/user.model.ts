@@ -6,6 +6,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
+  systemUser:boolean ;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -29,19 +30,22 @@ const userSchema = new mongoose.Schema<IUser>(
       required: [true, "Password is required"],
       select: false,   
     },
+    systemUser: {
+      type: Boolean,
+      default: false,
+      select: false,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-userSchema.pre("save", async function (this: any, next: any) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function (this: any) {
+  if (!this.isModified("password")) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-
-  next();
 });  
 
 

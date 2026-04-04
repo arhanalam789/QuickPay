@@ -107,3 +107,82 @@ export const createTransaction = async (req: any, res: any) => {
     res.status(500).json({ message: "Server error while processing transaction" });
   }
 };    
+
+/**
+ * create initial transaction from system user to new users account
+ */
+export const createInitialTransaction = async (req: any, res: any) => {
+  try {
+    const { toAccount, amount,idempotencyKey} = req.body;
+
+    if (!toAccount || !amount || !idempotencyKey) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }   
+
+    const toAcc = await Account.findById(toAccount);
+
+    if (!toAcc) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+    
+    if (toAcc.status !== "active") {  
+      return res.status(400).json({ message: "Account must be active" });
+    }
+    // @ts-ignore
+    const systemUserAccount = await Account.findOne({ user: process.env.SYSTEM_USER_ID, status: "active" });
+    if (!systemUserAccount) {
+      return res.status(500).json({ message: "System user account not found or inactive" });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    // @ts-ignore
+    const newTransaction = await Transaction.create(
+      {
+        fromAccount: systemUserAccount._id,
+        toAccount,
+        amount,
+        idempotencyKey,
+        status: "pending",
+      },
+      { session }
+    ) as ITransaction;
+
+    // @ts-ignore
+    const debitLedgerEntry = await Ledger.create(
+      {
+        account: systemUserAccount._id,
+        amount,
+        type: "debit",
+        transaction: newTransaction._id,
+      },
+      { session }
+    );
+
+    // @ts-ignore
+    const creditLedgerEntry = await Ledger.create(
+      {
+        account: toAccount,
+        amount,
+        type: "credit",
+        transaction: newTransaction._id,
+      },
+      { session }
+    );
+
+    await Transaction.findByIdAndUpdate(
+      newTransaction._id,
+      { status: "completed" },
+      { session, new: true }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({ message: "Initial transaction completed successfully", transaction: newTransaction });
+  } catch (error) {
+    console.error("Error processing initial transaction:", error);
+    res.status(500).json({ message: "Server error while processing initial transaction" });
+  }
+}; 
