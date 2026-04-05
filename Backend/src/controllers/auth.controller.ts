@@ -2,6 +2,7 @@ import User, { IUser } from "../models/user.model";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import TokenBlacklist from "../models/blackList.model";
+import { redis } from "../config/redis.config";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET
@@ -22,6 +23,7 @@ export const register = async (req: any, res: any) => {
 
     const newUser: IUser = new User({ name, email, password });
     const token = jwt.sign({ id: newUser._id }, JWT_SECRET!, { expiresIn: "3d" });
+    await redis.set(`user:${newUser._id}`, token, { ex: 3 * 24 * 60 * 60 });
     await newUser.save();
     res.cookie("token", token, {
       httpOnly: true,
@@ -56,6 +58,7 @@ export const login = async (req: any, res: any) => {
     }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET!, { expiresIn: "3d" });
+    await redis.set(`user:${user._id}`, token, { ex: 3 * 24 * 60 * 60 });
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -79,6 +82,12 @@ export const logout = async (req: any, res: any) => {
   if (!token) {
     return res.status(400).json({ message: "You are not logged in" });
   } 
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET!);
+    await redis.del(`user:${decoded.id}`);
+  } catch (err) {
+    console.error("Token decode error on logout:", err);
+  }
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
