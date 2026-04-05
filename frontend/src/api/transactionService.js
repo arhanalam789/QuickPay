@@ -1,48 +1,36 @@
+import BASE_URL from './baseUrl';
+
 export const createTransaction = async (payload) => {
-  // payload: { fromAccount, toAccount, amount, idempotencyKey }
-  const res = await fetch('/api/transaction/create', {
+  const res = await fetch(`${BASE_URL}/api/transaction/create`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     credentials: 'include'
   });
   const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || 'Transaction failed');
-  }
+  if (!res.ok) throw new Error(data.message || 'Transaction failed');
   return data;
 };
 
 export const createInitialTransaction = async (payload) => {
-  // payload: { toAccount, amount, idempotencyKey }
-  const res = await fetch('/api/transaction/initial', {
+  const res = await fetch(`${BASE_URL}/api/transaction/initial`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     credentials: 'include'
   });
   const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || 'Initial transaction failed');
-  }
+  if (!res.ok) throw new Error(data.message || 'Initial transaction failed');
   return data;
 };
 
 export const getAllTransactions = async () => {
-  const res = await fetch('/api/transaction/all', {
+  const res = await fetch(`${BASE_URL}/api/transaction/all`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
   });
   const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || 'Failed to fetch transactions');
-  }
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch transactions');
   return data;
 };

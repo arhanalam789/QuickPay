@@ -1,23 +1,25 @@
+import BASE_URL from './baseUrl';
+
 export const fetchUserAccounts = async () => {
-  const res = await fetch('/api/account/allAccounts', {
+  const res = await fetch(`${BASE_URL}/api/account/allAccounts`, {
     credentials: 'include'
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch accounts');
-  return data.accounts; // returns array of accounts
+  return data.accounts;
 };
 
 export const fetchAccountDetails = async (accountId) => {
-  const res = await fetch(`/api/account/${accountId}`, {
+  const res = await fetch(`${BASE_URL}/api/account/${accountId}`, {
     credentials: 'include'
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch account details');
-  return data; // { account, balance }
+  return data;
 };
 
 export const createAccount = async () => {
-  const res = await fetch('/api/account/createAccount', {
+  const res = await fetch(`${BASE_URL}/api/account/createAccount`, {
     method: 'POST',
     credentials: 'include'
   });

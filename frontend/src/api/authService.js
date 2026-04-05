@@ -1,17 +1,19 @@
+import BASE_URL from './baseUrl';
+
 export const loginUser = async (email, password) => {
-  const res = await fetch('/api/auth/login', {
+  const res = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
-    credentials: 'include' // Sent/Receive cookies automatically
+    credentials: 'include'
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Login failed');
-  return data; // { message, user }
+  return data;
 };
 
 export const registerUser = async (name, email, password) => {
-  const res = await fetch('/api/auth/register', {
+  const res = await fetch(`${BASE_URL}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, email, password }),
@@ -23,7 +25,7 @@ export const registerUser = async (name, email, password) => {
 };
 
 export const logoutUser = async () => {
-  const res = await fetch('/api/auth/logout', {
+  const res = await fetch(`${BASE_URL}/api/auth/logout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
