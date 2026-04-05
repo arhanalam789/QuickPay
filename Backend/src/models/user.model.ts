@@ -6,7 +6,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  systemUser:boolean ;
+  systemUser:boolean;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema<IUser>(
       default: false,
       select: false,
     },
+    
   },
   {
     timestamps: true,

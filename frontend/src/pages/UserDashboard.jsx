@@ -60,6 +60,7 @@ export default function UserDashboard() {
       setActivities(resp.transactions || []);
     } catch (err) {
       console.error(err);
+      handleApiError(err);
     } finally {
       setLoadingActivities(false);
     }
@@ -84,7 +85,9 @@ export default function UserDashboard() {
         }
       }
     } catch (err) {
-      setError('Failed to load accounts. ' + (err.message || ''));
+      if (!handleApiError(err)) {
+        setError('Failed to load accounts. ' + (err.message || ''));
+      }
     } finally {
       setLoading(false);
     }
@@ -97,7 +100,9 @@ export default function UserDashboard() {
       setSelectedAccount(details.account);
       setBalance(details.balance);
     } catch (err) {
-      setError('Failed to switch account.');
+      if (!handleApiError(err)) {
+        setError('Failed to switch account.');
+      }
     }
   };
 
@@ -107,7 +112,9 @@ export default function UserDashboard() {
       await createAccount();
       await loadAccounts();
     } catch (err) {
-      setError('Failed to create account. ' + (err.message || ''));
+      if (!handleApiError(err)) {
+        setError('Failed to create account. ' + (err.message || ''));
+      }
       setLoading(false);
     }
   };
@@ -157,7 +164,9 @@ export default function UserDashboard() {
       setAmount('');
       setDescription('');
     } catch (err) {
-      setTxMessage({ type: 'error', text: err.message || 'Transaction failed.' });
+      if (!handleApiError(err)) {
+        setTxMessage({ type: 'error', text: err.message || 'Transaction failed.' });
+      }
     } finally {
       setTxLoading(false);
     }
@@ -166,6 +175,15 @@ export default function UserDashboard() {
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  const handleApiError = (err) => {
+    const msg = err.message || '';
+    if (msg.includes('Session expired') || msg.includes('logged in from another device') || msg.includes('Invalid token') || msg.includes('No token provided')) {
+      handleLogout();
+      return true;
+    }
+    return false;
   };
 
   const { currentMonthSpend, trendPercent } = React.useMemo(() => {
