@@ -196,9 +196,9 @@ function PricingCard({ tier, price, desc, features, recommended, delay }) {
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const [cursor, setCursor] = useState({ x: -100, y: -100 });
-  const [cursorDelay, setCursorDelay] = useState({ x: -100, y: -100 });
+  const cursorRef = useRef(null);
+  const cursorDelayRef = useRef(null);
+  const orbRef = useRef(null);
   const rafRef = useRef(null);
 
   useEffect(() => {
@@ -208,32 +208,46 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const onMove = (e) => {
-      setCursor({ x: e.clientX, y: e.clientY });
-      setMouse({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
-
-  // delayed ring cursor
-  useEffect(() => {
     let pos = { x: -100, y: -100 };
     let target = { x: -100, y: -100 };
+    let hasMoved = false;
+
     const loop = () => {
       pos.x += (target.x - pos.x) * 0.12;
       pos.y += (target.y - pos.y) * 0.12;
-      setCursorDelay({ x: pos.x, y: pos.y });
+      
+      if (cursorDelayRef.current) {
+        cursorDelayRef.current.style.transform = `translate3d(calc(${pos.x}px - 50%), calc(${pos.y}px - 50%), 0)`;
+      }
       rafRef.current = requestAnimationFrame(loop);
     };
-    const onMove = (e) => { target = { x: e.clientX, y: e.clientY }; };
+
+    const onMove = (e) => {
+      target = { x: e.clientX, y: e.clientY };
+      if (!hasMoved) {
+        hasMoved = true;
+        pos = { x: e.clientX, y: e.clientY };
+      }
+      
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(calc(${target.x}px - 50%), calc(${target.y}px - 50%), 0)`;
+      }
+      
+      if (orbRef.current) {
+        const px = (target.x / (window.innerWidth || 1) - 0.5) * 20;
+        const py = (target.y / (window.innerHeight || 1) - 0.5) * 20;
+        orbRef.current.style.transform = `translate3d(${px*0.6}px, ${py*0.6}px, 0)`;
+      }
+    };
+
     window.addEventListener("mousemove", onMove);
     rafRef.current = requestAnimationFrame(loop);
-    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(rafRef.current); };
-  }, []);
 
-  const px = (mouse.x / (window.innerWidth || 1) - 0.5) * 20;
-  const py = (mouse.y / (window.innerHeight || 1) - 0.5) * 20;
+    return () => { 
+      window.removeEventListener("mousemove", onMove); 
+      cancelAnimationFrame(rafRef.current); 
+    };
+  }, []);
 
   return (
     <>
@@ -287,8 +301,8 @@ export default function LandingPage() {
       `}</style>
 
       {/* ── Custom cursor ── */}
-      <div style={{ position:"fixed",zIndex:9999,pointerEvents:"none", left:cursor.x,top:cursor.y, transform:"translate(-50%,-50%)", width:6,height:6, borderRadius:"50%", background:"#fff", boxShadow:"0 0 10px rgba(255,255,255,1)", transition:"transform .08s" }} />
-      <div style={{ position:"fixed",zIndex:9998,pointerEvents:"none", left:cursorDelay.x,top:cursorDelay.y, transform:"translate(-50%,-50%)", width:34,height:34, borderRadius:"50%", border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,0.02)", backdropFilter:"blur(2px)" }} />
+      <div ref={cursorRef} style={{ position:"fixed",zIndex:9999,pointerEvents:"none", left:0,top:0, transform:"translate3d(-100px,-100px,0)", width:6,height:6, borderRadius:"50%", background:"#fff", boxShadow:"0 0 10px rgba(255,255,255,1)" }} />
+      <div ref={cursorDelayRef} style={{ position:"fixed",zIndex:9998,pointerEvents:"none", left:0,top:0, transform:"translate3d(-100px,-100px,0)", width:34,height:34, borderRadius:"50%", border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,0.02)", backdropFilter:"blur(2px)" }} />
 
       {/* ── Sleek Grid BG ── */}
       <div style={{ position:"fixed",inset:0,zIndex:0,pointerEvents:"none",
@@ -333,9 +347,9 @@ export default function LandingPage() {
       <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 6vw 80px",position:"relative",overflow:"hidden" }}>
         
         {/* Holographic glowing orb background element */}
-        <div style={{
+        <div ref={orbRef} style={{
           position:"absolute",right:"10%",top:"30%",
-          transform:`translate(${px*0.6}px,${py*0.6}px)`,
+          transform:"translate3d(0,0,0)",
           width: "500px", height: "500px",
           background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%)",
           filter: "blur(50px)",
