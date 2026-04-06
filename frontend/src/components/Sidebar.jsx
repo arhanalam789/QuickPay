@@ -1,7 +1,7 @@
 import React from 'react';
 import AbstractLogo from './AbstractLogo';
 
-export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
+export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isOpen, setIsOpen }) {
   const isSystemUser = user?.email?.toLowerCase() === import.meta.env.VITE_SYSTEM_EMAIL?.toLowerCase();
 
   const menuItems = [
@@ -12,17 +12,37 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-72 flex flex-col border-r border-white/5 bg-[#030303]/80 backdrop-blur-3xl z-40">
-      <div className="p-8 pb-12 flex items-center gap-3">
-        <AbstractLogo size={32} />
-        <span className="font-['Syne'] font-extrabold text-xl tracking-tight text-white">QuickPay.</span>
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <aside className={`fixed left-0 top-0 h-full w-72 flex flex-col border-r border-white/5 bg-[#030303]/80 backdrop-blur-3xl z-40 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <div className="p-8 pb-12 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <AbstractLogo size={32} />
+          <span className="font-['Syne'] font-extrabold text-xl tracking-tight text-white">QuickPay.</span>
+        </div>
+        <button 
+          className="md:hidden text-white/50 hover:text-white"
+          onClick={() => setIsOpen(false)}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
       </div>
 
       <nav className="flex-1 px-4 space-y-2">
         {menuItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => {
+              setActiveTab(item.id);
+              if(window.innerWidth < 768) setIsOpen(false);
+            }}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 font-['Inter'] text-sm font-medium ${
               activeTab === item.id 
                 ? 'bg-white/10 text-white shadow-lg shadow-white/5 border border-white/10 opacity-100' 
@@ -54,5 +74,6 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
         </button>
       </div>
     </aside>
+    </>
   );
 }

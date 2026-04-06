@@ -292,6 +292,18 @@ export default function LandingPage() {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #030303; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 10px; }
+
+        @media (max-width: 768px) {
+          body { cursor: auto; }
+          .btn-main, .btn-line { cursor: pointer; }
+          .nav-link { cursor: pointer; }
+          .mobile-nav-hide { display: none !important; }
+          .security-grid { grid-template-columns: 1fr !important; }
+          .security-span2 { grid-row: span 1 !important; min-height: 300px !important; }
+          .cta-inner { padding: 50px 24px !important; }
+          .hero-content { padding-left: 5vw !important; padding-right: 5vw !important; }
+          .lp-footer { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+        }
       `}</style>
 
       <div ref={cursorRef} style={{ position:"fixed",zIndex:9999,pointerEvents:"none", left:0,top:0, transform:"translate3d(-100px,-100px,0)", width:6,height:6, borderRadius:"50%", background:"#fff", boxShadow:"0 0 10px rgba(255,255,255,1)" }} />
@@ -321,14 +333,15 @@ export default function LandingPage() {
           <span style={{ fontFamily:"'Syne',sans-serif",fontSize:"1.2rem",fontWeight:800,color:"#fff",letterSpacing:"-0.02em" }}>QuickPay</span>
         </Link>
         <div style={{ display:"flex",gap:"36px",alignItems:"center" }}>
-          {[
-            { name: "Features", href: "#features" },
-            { name: "Security", href: "#security" },
-            { name: "Pricing", href: "#pricing" }
-          ].map(n => <a key={n.name} href={n.href} className="nav-link">{n.name}</a>)}
-
-          <div style={{ width:"1px",height:"16px",background:"rgba(255,255,255,.15)" }} />
-          <Link to="/login" className="nav-link">Log in</Link>
+          <div className="mobile-nav-hide" style={{ display:"flex",gap:"36px",alignItems:"center" }}>
+            {[
+              { name: "Features", href: "#features" },
+              { name: "Security", href: "#security" },
+              { name: "Pricing", href: "#pricing" }
+            ].map(n => <a key={n.name} href={n.href} className="nav-link">{n.name}</a>)}
+            <div style={{ width:"1px",height:"16px",background:"rgba(255,255,255,.15)" }} />
+            <Link to="/login" className="nav-link">Log in</Link>
+          </div>
           <Link to="/signup" className="btn-main" style={{ padding:"10px 24px",fontSize:".8rem",boxShadow:"none",borderRadius:"6px" }}>Get Started</Link>
         </div>
       </nav>
@@ -448,9 +461,9 @@ export default function LandingPage() {
 
       <section id="security" style={{ padding:"0 6vw 140px",position:"relative",zIndex:2,scrollMarginTop:"120px" }}>
         <div style={{ maxWidth:"1200px",margin:"0 auto" }}>
-          <div style={{ display:"grid",gridTemplateColumns:"1.2fr 1fr",gridTemplateRows:"auto auto",gap:"24px" }}>
+          <div className="security-grid" style={{ display:"grid",gridTemplateColumns:"1.2fr 1fr",gridTemplateRows:"auto auto",gap:"24px" }}>
 
-            <BlurFadeUp delay={0} style={{ gridRow:"span 2" }}>
+            <BlurFadeUp delay={0} className="security-span2" style={{ gridRow:"span 2" }}>
               <div style={{
                 height:"100%",minHeight:"450px",
                 padding:"60px 48px",
@@ -563,7 +576,7 @@ export default function LandingPage() {
       <section style={{ padding:"0 6vw 160px",position:"relative",zIndex:2 }}>
         <div style={{ maxWidth:"1000px",margin:"0 auto" }}>
           <BlurFadeUp delay={0}>
-            <div style={{
+            <div className="cta-inner" style={{
               padding:"100px 60px",
               border:"1px solid rgba(255,255,255,.12)",
               borderRadius:"24px",
@@ -604,7 +617,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer style={{
+      <footer className="lp-footer" style={{
         borderTop:"1px solid rgba(255,255,255,.05)",
         padding:"48px 6vw",
         position:"relative",zIndex:2,

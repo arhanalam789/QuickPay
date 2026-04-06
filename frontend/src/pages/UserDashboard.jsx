@@ -17,6 +17,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [toAccount, setToAccount] = useState('');
   const [amount, setAmount] = useState('');
@@ -281,12 +282,29 @@ export default function UserDashboard() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white flex select-none overflow-hidden font-['Inter']">
+    <div className="min-h-screen bg-[#030303] text-white flex flex-col md:flex-row select-none overflow-hidden font-['Inter']">
+      
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex items-center justify-between p-6 border-b border-white/5 bg-[#030303]/80 backdrop-blur-3xl z-20">
+        <div className="flex items-center gap-2">
+          <AbstractLogo size={24} />
+          <span className="font-['Syne'] font-extrabold text-lg tracking-tight text-white">QuickPay.</span>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="text-white/50 hover:text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         user={user} 
         onLogout={handleLogout} 
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -299,17 +317,17 @@ export default function UserDashboard() {
         <div className="absolute bottom-[5%] left-[20%] w-[200px] h-[200px] bg-emerald-500/[0.03] rounded-full blur-[80px] animate-float-fast animation-delay-1000" />
       </div>
 
-      <main className="flex-1 ml-72 h-screen overflow-y-auto custom-scrollbar relative z-10 bg-transparent">
-        <div className="max-w-6xl mx-auto p-10 pb-24">
+      <main className="flex-1 ml-0 md:ml-72 h-[calc(100vh-80px)] md:h-screen overflow-y-auto custom-scrollbar relative z-10 bg-transparent mt-[80px] md:mt-0">
+        <div className="max-w-6xl mx-auto p-5 md:p-10 pb-24">
 
-          <header className="flex justify-between items-end mb-12">
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-12">
             <div>
               <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] font-medium mb-2 font-['Syne']">QuickPay Platform v1.0</p>
               <h1 className="text-4xl font-extrabold tracking-tight font-['Syne'] text-white/90">
                 {activeTab === 'overview' ? `Welcome, ${user.name.split(' ')[0]}` : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
               </h1>
             </div>
-            <div className="text-right">
+            <div className="text-left md:text-right">
               <p className="text-[10px] text-white/20 uppercase tracking-widest mb-1">Local Time</p>
               <p className="text-sm font-medium text-white/60 tabular-nums">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -358,21 +376,21 @@ export default function UserDashboard() {
                     <div className="lg:col-span-2 space-y-10">
                       {/* Create Another Account Prompt */}
                       {!isSystemUser && (
-                        <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl flex items-center justify-between group hover:border-white/20 hover:bg-white/[0.05] transition-all duration-500 overflow-hidden relative cursor-default">
-                          <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 group-hover:scale-150 transition-all duration-700 ease-out" />
-                          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 group-hover:scale-150 transition-all duration-700 ease-out" />
-                          <div className="relative z-10">
-                            <h3 className="font-['Syne'] font-bold text-white/90 text-lg mb-1 group-hover:text-white transition-colors">Expand Your Accounts</h3>
-                            <p className="text-white/40 text-xs group-hover:text-white/60 transition-colors">Create another account to separate your finances or scale operations.</p>
-                          </div>
-                          <button 
-                            onClick={handleCreateAccount}
-                            className="relative z-10 flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-black font-['Syne'] font-extrabold uppercase tracking-widest text-[11px] transition-all hover:scale-[1.05] hover:-translate-y-1 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:bg-gradient-to-r hover:from-white hover:to-gray-200"
-                          >
-                            <span>+</span> Create Another Account
-                          </button>
-                        </div>
-                      )}
+                         <div className="p-6 md:p-8 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group hover:border-white/20 hover:bg-white/[0.05] transition-all duration-500 overflow-hidden relative cursor-default">
+                           <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 group-hover:scale-150 transition-all duration-700 ease-out" />
+                           <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 group-hover:scale-150 transition-all duration-700 ease-out" />
+                           <div className="relative z-10">
+                             <h3 className="font-['Syne'] font-bold text-white/90 text-lg mb-1 group-hover:text-white transition-colors">Expand Your Accounts</h3>
+                             <p className="text-white/40 text-xs group-hover:text-white/60 transition-colors">Create another account to separate your finances or scale operations.</p>
+                           </div>
+                           <button 
+                             onClick={handleCreateAccount}
+                             className="relative z-10 flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 rounded-2xl bg-white text-black font-['Syne'] font-extrabold uppercase tracking-widest text-[11px] transition-all hover:scale-[1.05] hover:-translate-y-1 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:bg-gradient-to-r hover:from-white hover:to-gray-200 w-full md:w-auto justify-center"
+                           >
+                             <span>+</span> Create Another Account
+                           </button>
+                         </div>
+                       )}
 
                       <div className="p-8 rounded-3xl border border-white/5 bg-white/[0.01] backdrop-blur-3xl">
                         <div className="flex justify-between items-center mb-8">
@@ -437,7 +455,7 @@ export default function UserDashboard() {
                     </div>
 
                     <div className="space-y-8">
-                       <div className="p-8 rounded-[32px] border border-white/5 bg-white/[0.02] backdrop-blur-3xl sticky top-10">
+                       <div className="p-6 md:p-8 rounded-[32px] border border-white/5 bg-white/[0.02] backdrop-blur-3xl md:sticky md:top-10">
                           <h3 className="font-['Syne'] font-bold text-white/80 mb-6 flex items-center gap-2">
                              {isSystemUser ? "Force Dispatch" : "Immediate Transfer"}
                              <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[8px] border border-emerald-500/20 animate-pulse">PROTECTED</span>
@@ -679,33 +697,33 @@ export default function UserDashboard() {
                          const isExpanded = expandedTx === tx._id;
                          return (
                            <div key={tx._id || idx} className="flex flex-col p-6 rounded-3xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors group cursor-pointer" onClick={() => setExpandedTx(isExpanded ? null : tx._id)}>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-5">
-                                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center font-bold text-2xl ${isCredit ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'} group-hover:scale-105 transition-transform`}>
-                                  {isCredit ? '↓' : '↑'}
+                              <div className="flex items-start md:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 md:gap-5 flex-1 min-w-0">
+                                  <div className={`h-10 w-10 md:h-14 md:w-14 flex-shrink-0 rounded-2xl flex items-center justify-center font-bold text-xl md:text-2xl ${isCredit ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'} group-hover:scale-105 transition-transform`}>
+                                    {isCredit ? '↓' : '↑'}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-bold text-white/90 mb-1 truncate">
+                                      {isCredit 
+                                        ? `Received from ${tx.fromAccount?.user?.name || (tx.fromAccount?._id ? '...' + tx.fromAccount._id.slice(-4).toUpperCase() : 'System')}` 
+                                        : `Sent to ${tx.toAccount?.user?.name || (tx.toAccount?._id ? '...' + tx.toAccount._id.slice(-4).toUpperCase() : 'Unknown')}`}
+                                    </p>
+                                    <p className="text-[10px] uppercase tracking-widest text-white/30 truncate">
+                                      {tx.description ? `${tx.description} • ` : ''}{new Date(tx.createdAt).toLocaleString()}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-sm font-bold text-white/90 mb-1">
-                                    {isCredit 
-                                      ? `Received from ${tx.fromAccount?.user?.name || (tx.fromAccount?._id ? '...' + tx.fromAccount._id.slice(-4).toUpperCase() : 'System')}` 
-                                      : `Sent to ${tx.toAccount?.user?.name || (tx.toAccount?._id ? '...' + tx.toAccount._id.slice(-4).toUpperCase() : 'Unknown')}`}
+                                <div className="text-right flex-shrink-0">
+                                  <p className={`text-base md:text-lg font-bold ${isCredit ? 'text-emerald-400' : 'text-white/90'}`}>
+                                    {isCredit ? '+' : '-'} ₹{tx.amount?.toLocaleString('en-IN') || '0.00'}
                                   </p>
-                                  <p className="text-[10px] uppercase tracking-widest text-white/30 truncate max-w-[300px]">
-                                    {tx.description ? `${tx.description} • ` : ''}{new Date(tx.createdAt).toLocaleString()}
+                                  <p className={`text-[9px] uppercase font-bold tracking-tighter px-2 py-1 rounded mt-1 inline-block ${
+                                    tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                                    tx.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  }`}>
+                                    {tx.status || 'Success'}
                                   </p>
                                 </div>
-                              </div>
-                              <div className="text-right">
-                                <p className={`text-lg font-bold ${isCredit ? 'text-emerald-400' : 'text-white/90'}`}>
-                                  {isCredit ? '+' : '-'} ₹{tx.amount?.toLocaleString('en-IN') || '0.00'}
-                                </p>
-                                <p className={`text-[9px] uppercase font-bold tracking-tighter px-2 py-1 rounded mt-1 inline-block ${
-                                  tx.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                                  tx.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                }`}>
-                                  {tx.status || 'Success'}
-                                </p>
-                              </div>
                               </div>
                               {isExpanded && (
                                 <div className="mt-6 pt-6 border-t border-white/5 animate-in slide-in-from-top-2 fade-in duration-300 cursor-default" onClick={(e) => e.stopPropagation()}>

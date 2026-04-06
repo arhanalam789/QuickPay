@@ -102,8 +102,8 @@ export default function Signup() {
           )}
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <div style={{ display: "flex", gap: "16px" }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 120px" }}>
                 <label style={{ display: "block", fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", marginBottom: "8px" }}>First name</label>
                 <input 
                   type="text" 
@@ -117,7 +117,7 @@ export default function Signup() {
                   }} 
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: "1 1 120px" }}>
                 <label style={{ display: "block", fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", marginBottom: "8px" }}>Last name</label>
                 <input 
                   type="text" 
