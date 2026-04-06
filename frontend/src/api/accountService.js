@@ -1,7 +1,9 @@
 import BASE_URL from './baseUrl';
+import { getAuthHeaders } from './authStorage';
 
 export const fetchUserAccounts = async () => {
   const res = await fetch(`${BASE_URL}/api/account/allAccounts`, {
+    headers: getAuthHeaders(),
     credentials: 'include'
   });
   const data = await res.json();
@@ -11,6 +13,7 @@ export const fetchUserAccounts = async () => {
 
 export const fetchAccountDetails = async (accountId) => {
   const res = await fetch(`${BASE_URL}/api/account/${accountId}`, {
+    headers: getAuthHeaders(),
     credentials: 'include'
   });
   const data = await res.json();
@@ -21,6 +24,7 @@ export const fetchAccountDetails = async (accountId) => {
 export const createAccount = async () => {
   const res = await fetch(`${BASE_URL}/api/account/createAccount`, {
     method: 'POST',
+    headers: getAuthHeaders(),
     credentials: 'include'
   });
   const data = await res.json();

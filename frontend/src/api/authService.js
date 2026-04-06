@@ -1,9 +1,10 @@
 import BASE_URL from './baseUrl';
+import { getAuthHeaders } from './authStorage';
 
 export const loginUser = async (email, password) => {
   const res = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ email, password }),
     credentials: 'include'
   });
@@ -15,7 +16,7 @@ export const loginUser = async (email, password) => {
 export const registerUser = async (name, email, password) => {
   const res = await fetch(`${BASE_URL}/api/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name, email, password }),
     credentials: 'include'
   });
@@ -27,7 +28,7 @@ export const registerUser = async (name, email, password) => {
 export const logoutUser = async () => {
   const res = await fetch(`${BASE_URL}/api/auth/logout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include'
   });
   const data = await res.json();

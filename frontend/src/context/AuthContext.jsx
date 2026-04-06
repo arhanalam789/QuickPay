@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { loginUser, registerUser, logoutUser } from '../api/authService';
+import { clearAuthSession, getStoredUser, storeAuthSession } from '../api/authStorage';
 
 const AuthContext = createContext(null);
 
@@ -9,27 +10,21 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize from LocalStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('quickpay_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user from local storage");
-      }
-    }
+    const storedUser = getStoredUser();
+    if (storedUser) setUser(storedUser);
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     const data = await loginUser(email, password);
     setUser(data.user);
-    localStorage.setItem('quickpay_user', JSON.stringify(data.user));
+    storeAuthSession(data);
   };
 
   const register = async (name, email, password) => {
     const data = await registerUser(name, email, password);
     setUser(data.user);
-    localStorage.setItem('quickpay_user', JSON.stringify(data.user));
+    storeAuthSession(data);
   };
 
   const logout = async () => {
@@ -39,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       console.warn("Logout api failed, clearing local state anyway");
     } finally {
       setUser(null);
-      localStorage.removeItem('quickpay_user');
+      clearAuthSession();
     }
   };
 

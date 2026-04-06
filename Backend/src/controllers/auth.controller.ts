@@ -6,6 +6,19 @@ import { redis } from "../config/redis.config";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET
+const isProduction = process.env.NODE_ENV === "production";
+const cookieSameSite = isProduction ? ("none" as const) : ("lax" as const);
+const authCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: cookieSameSite,
+  maxAge: 3 * 24 * 60 * 60 * 1000,
+};
+const clearAuthCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: cookieSameSite,
+};
 /** 
  * Register controller --- handles user registration logic
  * post /api/auth/register
@@ -25,12 +38,7 @@ export const register = async (req: any, res: any) => {
     const token = jwt.sign({ id: newUser._id }, JWT_SECRET!, { expiresIn: "3d" });
     await redis.set(`user:${newUser._id}`, token, { ex: 3 * 24 * 60 * 60 });
     await newUser.save();
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
-    });
+    res.cookie("token", token, authCookieOptions);
 
     res.status(201).json({ message: "User registered successfully",user: { id: newUser._id, name: newUser.name, email: newUser.email } , token  });
   } catch (error) {
@@ -59,12 +67,7 @@ export const login = async (req: any, res: any) => {
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET!, { expiresIn: "3d" });
     await redis.set(`user:${user._id}`, token, { ex: 3 * 24 * 60 * 60 });
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
-    });
+    res.cookie("token", token, authCookieOptions);
 
     res.json({ message: "Login successful", user: { id: user._id, name: user.name, email: user.email }, token });
   } catch (error) {
@@ -88,11 +91,7 @@ export const logout = async (req: any, res: any) => {
   } catch (err) {
     console.error("Token decode error on logout:", err);
   }
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  res.clearCookie("token", clearAuthCookieOptions);
   await TokenBlacklist.create({ token });
   res.json({ message: "Logout successful" });
 }
