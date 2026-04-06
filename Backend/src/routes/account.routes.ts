@@ -23,4 +23,10 @@ router.get("/allAccounts", authmiddleware.authenticate, accountController.getUse
  */
 router.get("/:accountId", authmiddleware.authenticate, accountController.getAccountDetailsById);
 
+/**
+ * * Get all users accounts across system (system user only)
+ * * GET /api/accounts/system/all-users-accounts
+ */
+router.get("/system/all-users-accounts", authmiddleware.authenticate, accountController.getAllUsersAccounts);
+
 export default router;

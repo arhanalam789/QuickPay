@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import AbstractLogo from '../components/AbstractLogo';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
-import { fetchUserAccounts, fetchAccountDetails, createAccount } from '../api/accountService';
-import { createTransaction, createInitialTransaction, getAllTransactions } from '../api/transactionService';
+import { fetchUserAccounts, fetchAccountDetails, createAccount, fetchAllUsersAccounts } from '../api/accountService';
+import { createTransaction, createInitialTransaction, getAllTransactions, systemWithdrawal } from '../api/transactionService';
 
 export default function UserDashboard() {
   const { user, logout } = useAuth();
@@ -18,16 +18,19 @@ export default function UserDashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Transaction form states
   const [toAccount, setToAccount] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [txLoading, setTxLoading] = useState(false);
   const [txMessage, setTxMessage] = useState(null);
-  
+
+  const [withdrawTarget, setWithdrawTarget] = useState(null);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawMessage, setWithdrawMessage] = useState({ type: '', text: '' });
+
   const [expandedTx, setExpandedTx] = useState(null);
 
-  // Account ID visibility and copy states
   const [revealedAccounts, setRevealedAccounts] = useState(new Set());
   const [copiedAccount, setCopiedAccount] = useState(null);
 
@@ -48,11 +51,9 @@ export default function UserDashboard() {
     setTimeout(() => setCopiedAccount(null), 2000);
   };
 
-  // Activities state
   const [activities, setActivities] = useState([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
 
-  // Check if current user is System User
   const isSystemUser = user?.email?.toLowerCase() === import.meta.env.VITE_SYSTEM_EMAIL?.toLowerCase();
 
   useEffect(() => {
@@ -60,17 +61,17 @@ export default function UserDashboard() {
       navigate('/login');
       return;
     }
-    
-    if (!isSystemUser) {
-      loadAccounts();
-    } else {
-      setLoading(false);
-    }
+
+    loadAccounts();
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === 'activity' || activeTab === 'overview') {
-      loadActivities();
+    if (activeTab === 'activity' || activeTab === 'overview' || activeTab === 'wallets') {
+      if (isSystemUser && activeTab === 'wallets' && accounts.length === 0) {
+        loadAccounts();
+      } else if (activeTab === 'activity' || activeTab === 'overview') {
+        loadActivities();
+      }
     }
   }, [activeTab]);
 
@@ -90,19 +91,25 @@ export default function UserDashboard() {
   const loadAccounts = async () => {
     setLoading(true);
     try {
-      const accs = await fetchUserAccounts();
-      setAccounts(accs);
-      if (accs.length > 0) {
-        // If no account selected, pick the first one
-        if (!selectedAccount) {
-          const details = await fetchAccountDetails(accs[0]._id);
-          setSelectedAccount(details.account);
-          setBalance(details.balance);
-        } else {
-          // Keep current selection but refresh balance
-          const details = await fetchAccountDetails(selectedAccount._id);
-          setSelectedAccount(details.account);
-          setBalance(details.balance);
+      if (isSystemUser) {
+        const accs = await fetchAllUsersAccounts();
+        setAccounts(accs);
+        // Sum total balances for overview system user
+        const total = accs.reduce((acc, curr) => acc + (curr.balance || 0), 0);
+        setBalance(total);
+      } else {
+        const accs = await fetchUserAccounts();
+        setAccounts(accs);
+        if (accs.length > 0) {
+          if (!selectedAccount) {
+            const details = await fetchAccountDetails(accs[0]._id);
+            setSelectedAccount(details.account);
+            setBalance(details.balance);
+          } else {
+            const details = await fetchAccountDetails(selectedAccount._id);
+            setSelectedAccount(details.account);
+            setBalance(details.balance);
+          }
         }
       }
     } catch (err) {
@@ -175,12 +182,11 @@ export default function UserDashboard() {
           description: description.trim()
         });
         setTxMessage({ type: 'success', text: 'Transaction sent successfully!' });
-        
-        // Refresh balance
+
         const details = await fetchAccountDetails(selectedAccount._id);
         setBalance(details.balance);
       }
-      // Reset form
+
       setToAccount('');
       setAmount('');
       setDescription('');
@@ -190,6 +196,33 @@ export default function UserDashboard() {
       }
     } finally {
       setTxLoading(false);
+    }
+  };
+
+  const handleSystemWithdraw = async (e, accountId) => {
+    e.preventDefault();
+    if (!withdrawAmount || isNaN(withdrawAmount) || Number(withdrawAmount) <= 0) {
+      setWithdrawMessage({ type: 'error', text: 'Please enter a valid positive amount.' });
+      return;
+    }
+    setWithdrawLoading(true);
+    setWithdrawMessage({ type: '', text: '' });
+    try {
+      await systemWithdrawal({
+        fromAccount: accountId,
+        amount: parseFloat(withdrawAmount),
+        description: 'System-initiated forced withdrawal'
+      });
+      setWithdrawMessage({ type: 'success', text: `Successfully withdrew ₹${withdrawAmount}.` });
+      await loadAccounts(); 
+      setWithdrawAmount('');
+      setTimeout(() => setWithdrawTarget(null), 2000); 
+    } catch (err) {
+      if (!handleApiError(err)) {
+        setWithdrawMessage({ type: 'error', text: err.message || 'Withdrawal failed.' });
+      }
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -211,13 +244,13 @@ export default function UserDashboard() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    
+
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
     let current = 0;
     let past = 0;
-    
+
     activities.forEach(tx => {
       const txDate = new Date(tx.createdAt);
       if (tx.status === 'completed') {
@@ -256,12 +289,11 @@ export default function UserDashboard() {
         onLogout={handleLogout} 
       />
 
-      {/* Interactive Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-white/[0.03] rounded-full blur-[120px] animate-float-slow" />
         <div className="absolute bottom-[20%] left-[-10%] w-[350px] h-[350px] bg-white/[0.02] rounded-full blur-[100px] animate-float-fast" />
         <div className="absolute top-[40%] left-[30%] w-[250px] h-[250px] bg-white/[0.015] rounded-full blur-[80px] animate-rotate-slow" />
-        {/* Additional Interactive Glowing Elements */}
+
         <div className="absolute top-[20%] right-[30%] w-[200px] h-[200px] bg-purple-500/[0.05] rounded-full blur-[90px] animate-pulse animation-delay-2000" />
         <div className="absolute bottom-[30%] right-[10%] w-[300px] h-[300px] bg-blue-500/[0.04] rounded-full blur-[100px] animate-float-slow animation-delay-4000" />
         <div className="absolute bottom-[5%] left-[20%] w-[200px] h-[200px] bg-emerald-500/[0.03] rounded-full blur-[80px] animate-float-fast animation-delay-1000" />
@@ -269,7 +301,7 @@ export default function UserDashboard() {
 
       <main className="flex-1 ml-72 h-screen overflow-y-auto custom-scrollbar relative z-10 bg-transparent">
         <div className="max-w-6xl mx-auto p-10 pb-24">
-          
+
           <header className="flex justify-between items-end mb-12">
             <div>
               <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] font-medium mb-2 font-['Syne']">QuickPay Platform v1.0</p>
@@ -297,7 +329,7 @@ export default function UserDashboard() {
             </div>
           ) : (
             <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-both">
-              
+
               {activeTab === 'overview' && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -325,20 +357,22 @@ export default function UserDashboard() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-10">
                       {/* Create Another Account Prompt */}
-                      <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl flex items-center justify-between group hover:border-white/20 hover:bg-white/[0.05] transition-all duration-500 overflow-hidden relative cursor-default">
-                        <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 group-hover:scale-150 transition-all duration-700 ease-out" />
-                        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 group-hover:scale-150 transition-all duration-700 ease-out" />
-                        <div className="relative z-10">
-                          <h3 className="font-['Syne'] font-bold text-white/90 text-lg mb-1 group-hover:text-white transition-colors">Expand Your Accounts</h3>
-                          <p className="text-white/40 text-xs group-hover:text-white/60 transition-colors">Create another account to separate your finances or scale operations.</p>
+                      {!isSystemUser && (
+                        <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl flex items-center justify-between group hover:border-white/20 hover:bg-white/[0.05] transition-all duration-500 overflow-hidden relative cursor-default">
+                          <div className="absolute -left-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 group-hover:scale-150 transition-all duration-700 ease-out" />
+                          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 group-hover:scale-150 transition-all duration-700 ease-out" />
+                          <div className="relative z-10">
+                            <h3 className="font-['Syne'] font-bold text-white/90 text-lg mb-1 group-hover:text-white transition-colors">Expand Your Accounts</h3>
+                            <p className="text-white/40 text-xs group-hover:text-white/60 transition-colors">Create another account to separate your finances or scale operations.</p>
+                          </div>
+                          <button 
+                            onClick={handleCreateAccount}
+                            className="relative z-10 flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-black font-['Syne'] font-extrabold uppercase tracking-widest text-[11px] transition-all hover:scale-[1.05] hover:-translate-y-1 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:bg-gradient-to-r hover:from-white hover:to-gray-200"
+                          >
+                            <span>+</span> Create Another Account
+                          </button>
                         </div>
-                        <button 
-                          onClick={handleCreateAccount}
-                          className="relative z-10 flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-black font-['Syne'] font-extrabold uppercase tracking-widest text-[11px] transition-all hover:scale-[1.05] hover:-translate-y-1 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:bg-gradient-to-r hover:from-white hover:to-gray-200"
-                        >
-                          <span>+</span> Create Another Account
-                        </button>
-                      </div>
+                      )}
 
                       <div className="p-8 rounded-3xl border border-white/5 bg-white/[0.01] backdrop-blur-3xl">
                         <div className="flex justify-between items-center mb-8">
@@ -445,7 +479,7 @@ export default function UserDashboard() {
                                 className="w-full bg-[#000] border border-white/10 rounded-xl px-5 py-4 text-xs font-mono text-white focus:outline-none focus:border-white/30 transition-all"
                               />
                             </div>
-                            
+
                             <div>
                               <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold mb-3 pl-1">Value (₹)</p>
                               <input 
@@ -456,7 +490,7 @@ export default function UserDashboard() {
                                 className="w-full bg-[#000] border border-white/10 rounded-xl px-5 py-4 text-xl font-bold text-white focus:outline-none focus:border-white/30 transition-all placeholder:text-white/10"
                               />
                             </div>
-                            
+
                             <div>
                               <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold mb-3 pl-1">Description</p>
                               <input 
@@ -467,7 +501,7 @@ export default function UserDashboard() {
                                 className="w-full bg-[#000] border border-white/10 rounded-xl px-5 py-4 text-xs font-mono text-white focus:outline-none focus:border-white/30 transition-all placeholder:text-white/20"
                               />
                             </div>
-                            
+
                             <button 
                               disabled={txLoading}
                               className="w-full py-5 rounded-2xl bg-white text-black font-['Syne'] font-extrabold uppercase tracking-widest text-[11px] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
@@ -484,53 +518,63 @@ export default function UserDashboard() {
               {activeTab === 'wallets' && (
                 <div className="animate-in fade-in slide-in-from-right-10 duration-700">
                   <div className="flex justify-between items-center mb-10 px-2">
-                    <h3 className="font-['Syne'] font-bold text-2xl text-white/90">Your Accounts</h3>
-                    <button onClick={handleCreateAccount} className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-['Syne'] font-bold tracking-widest text-[10px] hover:bg-white/10 hover:border-white/30 hover:scale-105 transition-all uppercase flex items-center gap-2">
-                       <span className="text-lg leading-none">+</span> Create Another Account
-                    </button>
+                    <h3 className="font-['Syne'] font-bold text-2xl text-white/90">{isSystemUser ? "User Directory" : "Your Accounts"}</h3>
+                    {!isSystemUser && (
+                      <button onClick={handleCreateAccount} className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-['Syne'] font-bold tracking-widest text-[10px] hover:bg-white/10 hover:border-white/30 hover:scale-105 transition-all uppercase flex items-center gap-2">
+                         <span className="text-lg leading-none">+</span> Create Another Account
+                      </button>
+                    )}
                   </div>
-                  
+
                   {accounts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-32 border border-white/5 rounded-[40px] bg-white/[0.01]">
                        <div className="h-16 w-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-3xl mb-6 opacity-40">💳</div>
-                       <p className="text-white/40 text-sm font-medium">No accounts found in this profile.</p>
-                       <button onClick={handleCreateAccount} className="mt-8 text-xs font-bold text-white/60 hover:text-white border-b border-white/20 hover:border-white pb-1 transition-all">Create First Account</button>
+                       <p className="text-white/40 text-sm font-medium">{isSystemUser ? "No users found in the system." : "No accounts found in this profile."}</p>
+                       {!isSystemUser && <button onClick={handleCreateAccount} className="mt-8 text-xs font-bold text-white/60 hover:text-white border-b border-white/20 hover:border-white pb-1 transition-all">Create First Account</button>}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                        {accounts.map(acc => (
-                         <div key={acc._id} onClick={() => handleAccountChange(acc._id)} className={`relative flex flex-col p-10 rounded-[40px] border transition-all duration-500 cursor-pointer group hover:scale-[1.02] ${
-                           selectedAccount?._id === acc._id 
+                         <div key={acc._id} onClick={() => !isSystemUser && handleAccountChange(acc._id)} className={`relative flex flex-col p-10 rounded-[40px] border transition-all duration-500 group ${!isSystemUser ? 'cursor-pointer hover:scale-[1.02]' : ''} ${
+                           selectedAccount?._id === acc._id && !isSystemUser
                              ? 'bg-gradient-to-br from-white/10 via-white/[0.05] to-transparent border-white/20' 
                              : 'bg-white/[0.02] border-white/5 hover:border-white/10'
                          }`}>
                            <div className="flex justify-between items-start mb-16">
                              <div className="h-10 w-10 flex items-center justify-center text-white/40 bg-white/5 rounded-xl border border-white/5 group-hover:text-white">
-                               VISA
+                               {isSystemUser ? '👤' : 'VISA'}
                              </div>
-                             {selectedAccount?._id === acc._id && (
+                             {selectedAccount?._id === acc._id && !isSystemUser && (
                                <span className="text-[10px] font-bold tracking-[3px] text-emerald-400 bg-emerald-500/5 px-3 py-1 rounded inline-block border border-emerald-500/20">PRIMARY</span>
                              )}
+                             {isSystemUser && (
+                               <div className="flex flex-col items-end">
+                                 <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400">Balance</span>
+                                 <span className="text-xl font-mono text-white/90">₹{acc.balance?.toLocaleString('en-IN') || '0.00'}</span>
+                               </div>
+                             )}
                            </div>
-                           <p className="text-xs uppercase tracking-[0.3em] font-bold text-white/20 mb-2">Vault Reference</p>
+                           <p className="text-xs uppercase tracking-[0.3em] font-bold text-white/20 mb-2">{isSystemUser ? "Account ID" : "Vault Reference"}</p>
                            <div className="flex items-center gap-3">
-                             <p className="text-2xl font-mono tracking-tighter text-white/80 group-hover:text-white">
-                               {revealedAccounts.has(acc._id) ? acc._id : `**** **** **** ${acc._id.slice(-4).toUpperCase()}`}
+                             <p className="text-2xl font-mono tracking-tighter text-white/80 group-hover:text-white truncate">
+                               {isSystemUser ? acc._id : (revealedAccounts.has(acc._id) ? acc._id : `**** **** **** ${acc._id.slice(-4).toUpperCase()}`)}
                              </p>
-                             <button
-                               onClick={(e) => toggleReveal(e, acc._id)}
-                               className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-90"
-                               title={revealedAccounts.has(acc._id) ? 'Hide ID' : 'Show ID'}
-                             >
-                               {revealedAccounts.has(acc._id) ? (
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                               ) : (
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                               )}
-                             </button>
+                             {!isSystemUser && (
+                               <button
+                                 onClick={(e) => toggleReveal(e, acc._id)}
+                                 className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-90"
+                                 title={revealedAccounts.has(acc._id) ? 'Hide ID' : 'Show ID'}
+                               >
+                                 {revealedAccounts.has(acc._id) ? (
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                 ) : (
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                 )}
+                               </button>
+                             )}
                              <button
                                onClick={(e) => copyAccountId(e, acc._id)}
-                               className={`p-2 rounded-lg border transition-all active:scale-90 ${
+                               className={`p-2 rounded-lg border transition-all active:scale-90 flex-shrink-0 ${
                                  copiedAccount === acc._id
                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                    : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20'
@@ -545,15 +589,64 @@ export default function UserDashboard() {
                              </button>
                            </div>
                            <div className="mt-12 flex justify-between items-end">
-                             <div>
-                               <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Contract Owner</p>
-                               <p className="text-xs font-bold text-white/60 group-hover:text-white/90">{user.name.toUpperCase()}</p>
+                             <div className="overflow-hidden">
+                               <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">{isSystemUser ? "User Details" : "Contract Owner"}</p>
+                               <p className="text-xs font-bold text-white/60 group-hover:text-white/90 truncate mr-4">
+                                 {isSystemUser ? `${acc.user?.name} (${acc.user?.email})` : user.name.toUpperCase()}
+                               </p>
                              </div>
-                             <div className="text-right">
+                             <div className="text-right flex-shrink-0">
                                <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Status</p>
                                <p className="text-xs font-bold text-white/60 group-hover:text-white/90 capitalize">Active {acc.currency}</p>
                              </div>
                            </div>
+                           
+                           {isSystemUser && (
+                             <div className="mt-6 pt-6 border-t border-white/5">
+                               {withdrawTarget !== acc._id ? (
+                                 <button
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setWithdrawTarget(acc._id);
+                                     setWithdrawMessage({ type: '', text: '' });
+                                   }}
+                                   className="w-full py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold uppercase tracking-widest text-[10px] hover:bg-rose-500/20 transition-colors"
+                                 >
+                                   Force Withdraw
+                                 </button>
+                               ) : (
+                                 <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                                   <input
+                                     type="number"
+                                     value={withdrawAmount}
+                                     onChange={(e) => setWithdrawAmount(e.target.value)}
+                                     placeholder="Amount in INR"
+                                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500 transition-colors"
+                                   />
+                                   {withdrawMessage.text && (
+                                     <p className={`text-[10px] font-bold ${withdrawMessage.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                       {withdrawMessage.text}
+                                     </p>
+                                   )}
+                                   <div className="flex gap-2">
+                                     <button
+                                       onClick={() => setWithdrawTarget(null)}
+                                       className="flex-1 py-2 rounded-xl bg-white/5 text-white/50 hover:text-white hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest transition-colors"
+                                     >
+                                       Cancel
+                                     </button>
+                                     <button
+                                       onClick={(e) => handleSystemWithdraw(e, acc._id)}
+                                       disabled={withdrawLoading}
+                                       className="flex-1 py-2 rounded-xl bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-[10px] font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
+                                     >
+                                       {withdrawLoading ? 'Processing...' : 'Confirm'}
+                                     </button>
+                                   </div>
+                                 </div>
+                               )}
+                             </div>
+                           )}
                          </div>
                        ))}
                     </div>
@@ -569,7 +662,7 @@ export default function UserDashboard() {
                        Refresh Ledger
                     </button>
                   </div>
-                  
+
                   {loadingActivities ? (
                     <div className="flex flex-col items-center justify-center py-32 border border-white/5 rounded-[40px] bg-white/[0.01]">
                        <p className="text-white/20 text-xs tracking-[0.5em] font-medium uppercase animate-pulse">Scanning Synchronized Transactions</p>
@@ -620,9 +713,9 @@ export default function UserDashboard() {
                                     <h4 className="font-['Syne'] font-bold text-lg text-white/90">Transaction Receipt</h4>
                                     <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-white/40 tracking-widest uppercase truncate max-w-[150px]">ID: {tx._id.slice(-8).toUpperCase()}</span>
                                   </div>
-                                  
+
                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-[#000]/30 p-6 rounded-2xl border border-white/5">
-                                    {/* Summary Column */}
+
                                     <div className="space-y-6">
                                       <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -645,8 +738,7 @@ export default function UserDashboard() {
                                         <p className="text-sm text-white/70 italic border-l-2 border-white/10 pl-3 leading-relaxed">{tx.description || 'No description provided.'}</p>
                                       </div>
                                     </div>
-                                    
-                                    {/* Parties Column */}
+
                                     <div className="space-y-4">
                                       <div className="bg-white/[0.02] p-4 rounded-xl border border-white/10 flex items-center justify-between group-hover:border-white/20 transition-colors">
                                         <div>
@@ -657,7 +749,7 @@ export default function UserDashboard() {
                                           <p className="text-[10px] font-mono text-white/30 mt-4 truncate max-w-[120px]">{tx.fromAccount?._id || 'SYSTEM_DEFAULT'}</p>
                                         </div>
                                       </div>
-                                      
+
                                       <div className="bg-white/[0.02] p-4 rounded-xl border border-white/10 flex items-center justify-between group-hover:border-white/20 transition-colors">
                                         <div>
                                           <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/30 mb-1">Receiver</p>
@@ -669,7 +761,7 @@ export default function UserDashboard() {
                                       </div>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="mt-6 text-center">
                                      <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Ref: {tx.idempotencyKey || 'N/A'}</p>
                                   </div>

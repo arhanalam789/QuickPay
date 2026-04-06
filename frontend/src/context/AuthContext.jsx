@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize from LocalStorage
   useEffect(() => {
     const storedUser = getStoredUser();
     if (storedUser) setUser(storedUser);

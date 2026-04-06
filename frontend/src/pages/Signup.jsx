@@ -67,7 +67,7 @@ export default function Signup() {
       overflow: "hidden",
       padding: "20px"
     }}>
-      {/* Background glow */}
+
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "70vw", height: "70vw", borderRadius: "50%",
@@ -160,7 +160,7 @@ export default function Signup() {
                 }} 
               />
             </div>
-            
+
             <button type="submit" disabled={isLoading} style={{
               width: "100%", padding: "14px", marginTop: "10px", borderRadius: "8px",
               background: isLoading ? "rgba(255,255,255,0.5)" : "linear-gradient(135deg, #fff 0%, #ccc 100%)", border: "none",

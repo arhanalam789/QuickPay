@@ -73,3 +73,31 @@ export const getAccountDetailsById = async (req: any, res: any) => {
   }
 };
 
+/**
+ * Get all accounts across the system (System User Only)
+ */
+export const getAllUsersAccounts = async (req: any, res: any) => {
+  try {
+    const isSystemUser = req.user.email?.toLowerCase() === process.env.SYSTEM_EMAIL?.toLowerCase() || req.user.systemUser;
+    
+    if (!isSystemUser) {
+      return res.status(403).json({ message: "Access denied. System User only." });
+    }
+
+    const accounts = await Account.find({ user: { $ne: req.user._id } }).populate("user", "name email");
+    
+    // Attach dynamically calculated balance to each account
+    const accountsWithBalances = await Promise.all(
+      accounts.map(async (acc) => {
+        const balance = await acc.getBalance();
+        return { ...acc.toObject(), balance };
+      })
+    );
+
+    res.status(200).json({ accounts: accountsWithBalances });
+  } catch (error) {
+    console.error("Error fetching all users accounts:", error);
+    res.status(500).json({ message: "Server error while fetching all accounts" });
+  }
+};
+

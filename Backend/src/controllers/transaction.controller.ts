@@ -266,7 +266,104 @@ export const createInitialTransaction = async (req: any, res: any) => {
     console.error("Error processing initial transaction:", error);
     res.status(500).json({ message: "Server error while processing initial transaction" });
   }
-}; 
+};
+/**
+ * forcefully withdraw from users account by system user
+ */
+export const systemWithdraw = async (req: any, res: any) => {
+  let newTransaction = {} as ITransaction;
+  try {
+    const { fromAccount, amount, idempotencyKey, description } = req.body;
+
+    if (!fromAccount || !amount || !idempotencyKey) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const fromAcc = await Account.findById(fromAccount);
+    if (!fromAcc) return res.status(404).json({ message: "Account not found" });
+
+    // Ensure they have enough funds (optional but good practice)
+    const currentBalance = await fromAcc.getBalance();
+    if (currentBalance < amount) {
+      return res.status(400).json({ message: "Insufficient funds for withdrawal" });
+    }
+
+    const systemUser = await User.findOne({ systemUser: true }).select("+systemUser");
+    if (!systemUser) return res.status(500).json({ message: "System user not found" });
+
+    const systemUserAccount = await Account.findOne({ user: systemUser._id });
+    if (!systemUserAccount) return res.status(500).json({ message: "System user account not found" });
+
+    const session = await mongoose.startSession();
+    
+    await session.withTransaction(async () => {
+      // @ts-ignore
+      const createdTransactions = await Transaction.create([{
+        fromAccount,
+        toAccount: systemUserAccount._id,
+        amount,
+        idempotencyKey,
+        status: "pending",
+        description: description || "System Withdrawal"
+      }], { session });
+      
+      newTransaction = createdTransactions[0] as ITransaction;
+
+      // Debit the target user
+      // @ts-ignore
+      await Ledger.create([{
+        account: fromAccount,
+        amount,
+        type: "debit",
+        transaction: newTransaction._id,
+      }], { session });
+
+      // Credit the system account
+      // @ts-ignore
+      await Ledger.create([{
+        account: systemUserAccount._id,
+        amount,
+        type: "credit",
+        transaction: newTransaction._id,
+      }], { session });
+
+      newTransaction = await Transaction.findByIdAndUpdate(
+        newTransaction._id,
+        { status: "completed" },
+        { session, new: true }
+      ) as ITransaction;
+    });
+
+    await session.endSession();
+
+    try {
+      const targetedUser = await User.findById(fromAcc.user);
+      if (targetedUser?.email) {
+        const amountStr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+        await sendEmail({
+          to: targetedUser.email,
+          subject: "Cash Withdrawn by System",
+          html: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333; border: 1px solid #ddd; border-radius: 5px;">
+                   <h2 style="color: #dc3545;">Cash Withdrawn by System!</h2>
+                   <p>Hello ${targetedUser.name},</p>
+                   <p>Your account has been debited by an amount of <strong>${amountStr}</strong> by the system.</p>
+                   <p><strong>Transaction ID:</strong> ${newTransaction._id}</p>
+                   <p><strong>Description:</strong> ${description || "System Withdrawal"}</p>
+                   <br/>
+                   <p>Thank you for using QuickPay.</p>
+                 </div>`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send email for withdrawal:", emailError);
+    }
+
+    res.status(201).json({ message: "System withdrawal completed successfully", transaction: newTransaction });
+  } catch (error) {
+    console.error("Error processing system withdrawal:", error);
+    res.status(500).json({ message: "Server error while processing system withdrawal" });
+  }
+};
 
 export const getAllTransactions = async (req: any, res: any) => {
   try {

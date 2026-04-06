@@ -2,9 +2,11 @@ import React from 'react';
 import AbstractLogo from './AbstractLogo';
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
+  const isSystemUser = user?.email?.toLowerCase() === import.meta.env.VITE_SYSTEM_EMAIL?.toLowerCase();
+
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'wallets', label: 'My Wallets', icon: '💳' },
+    { id: 'wallets', label: isSystemUser ? 'User Directory' : 'My Wallets', icon: '💳' },
     { id: 'activity', label: 'Activity', icon: '📝' },
     { id: 'security', label: 'Security', icon: '🛡️' },
   ];
@@ -43,7 +45,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
             <p className="text-[10px] text-white/30 truncate uppercase tracking-widest">{user?.email}</p>
           </div>
         </div>
-        
+
         <button 
           onClick={onLogout}
           className="w-full py-3 text-xs font-semibold uppercase tracking-widest text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 rounded-xl border border-transparent hover:border-rose-500/20 transition-all duration-300"

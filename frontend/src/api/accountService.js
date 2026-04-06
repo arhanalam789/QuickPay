@@ -12,6 +12,16 @@ export const fetchUserAccounts = async () => {
   return data.accounts;
 };
 
+export const fetchAllUsersAccounts = async () => {
+  const res = await fetch(`${API}/api/account/system/all-users-accounts`, {
+    headers: getAuthHeaders(),
+    credentials: 'include'
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch all users accounts');
+  return data.accounts;
+};
+
 export const fetchAccountDetails = async (accountId) => {
   const res = await fetch(`${API}/api/account/${accountId}`, {
     headers: getAuthHeaders(),

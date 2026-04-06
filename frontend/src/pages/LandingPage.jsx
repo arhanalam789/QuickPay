@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import AbstractLogo from "../components/AbstractLogo";
 
-/* ─── Scroll reveal hook ─── */
 function useReveal(threshold = 0.15) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -19,7 +18,6 @@ function useReveal(threshold = 0.15) {
   return [ref, visible];
 }
 
-/* ─── Blur Fade Up ─── */
 function BlurFadeUp({ children, delay = 0, style = {} }) {
   const [ref, visible] = useReveal(0.1);
   return (
@@ -35,7 +33,6 @@ function BlurFadeUp({ children, delay = 0, style = {} }) {
   );
 }
 
-/* ─── Word-by-word Scroll Reveal with Silver Gradient ─── */
 function RevealText({ children, tag = "p", style = {}, delay = 0, gradient = false }) {
   const [ref, visible] = useReveal(0.1);
   const words = String(children).split(" ");
@@ -57,7 +54,6 @@ function RevealText({ children, tag = "p", style = {}, delay = 0, gradient = fal
   );
 }
 
-/* ─── Glowing stat ─── */
 function Stat({ value, label, delay }) {
   const [ref, visible] = useReveal(0.2);
   return (
@@ -98,7 +94,6 @@ const Icons = {
   check:    <svg fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
 };
 
-/* ─── Feature card ─── */
 function FeatureCard({ icon, title, desc, index }) {
   const [ref, visible] = useReveal(0.08);
   const [hov, setHov] = useState(false);
@@ -151,7 +146,6 @@ function FeatureCard({ icon, title, desc, index }) {
   );
 }
 
-/* ─── Pricing Card ─── */
 function PricingCard({ tier, price, desc, features, recommended, delay }) {
   const [ref, visible] = useReveal(0.1);
   return (
@@ -215,7 +209,7 @@ export default function LandingPage() {
     const loop = () => {
       pos.x += (target.x - pos.x) * 0.12;
       pos.y += (target.y - pos.y) * 0.12;
-      
+
       if (cursorDelayRef.current) {
         cursorDelayRef.current.style.transform = `translate3d(calc(${pos.x}px - 50%), calc(${pos.y}px - 50%), 0)`;
       }
@@ -228,11 +222,11 @@ export default function LandingPage() {
         hasMoved = true;
         pos = { x: e.clientX, y: e.clientY };
       }
-      
+
       if (cursorRef.current) {
         cursorRef.current.style.transform = `translate3d(calc(${target.x}px - 50%), calc(${target.y}px - 50%), 0)`;
       }
-      
+
       if (orbRef.current) {
         const px = (target.x / (window.innerWidth || 1) - 0.5) * 20;
         const py = (target.y / (window.innerHeight || 1) - 0.5) * 20;
@@ -300,23 +294,19 @@ export default function LandingPage() {
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 10px; }
       `}</style>
 
-      {/* ── Custom cursor ── */}
       <div ref={cursorRef} style={{ position:"fixed",zIndex:9999,pointerEvents:"none", left:0,top:0, transform:"translate3d(-100px,-100px,0)", width:6,height:6, borderRadius:"50%", background:"#fff", boxShadow:"0 0 10px rgba(255,255,255,1)" }} />
       <div ref={cursorDelayRef} style={{ position:"fixed",zIndex:9998,pointerEvents:"none", left:0,top:0, transform:"translate3d(-100px,-100px,0)", width:34,height:34, borderRadius:"50%", border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,0.02)", backdropFilter:"blur(2px)" }} />
 
-      {/* ── Sleek Grid BG ── */}
       <div style={{ position:"fixed",inset:0,zIndex:0,pointerEvents:"none",
         backgroundImage:`linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px)`,
         backgroundSize:"60px 60px",
         maskImage:"radial-gradient(ellipse 80% 80% at 50% 10%, black 10%, transparent 70%)"
       }} />
 
-      {/* ── Ambient silver glow ── */}
       <div style={{ position:"fixed",inset:0,zIndex:0,pointerEvents:"none" }}>
         <div style={{ position:"absolute",top:"-40%",left:"50%",transform:"translateX(-50%)", width:"80vw",height:"70vw", borderRadius:"50%", background:"radial-gradient(ellipse,rgba(255,255,255,.025) 0%,transparent 60%)", animation:"pulseGlow 12s ease-in-out infinite" }} />
       </div>
 
-      {/* ══ NAVBAR ══ */}
       <nav style={{
         position:"fixed",top:0,left:0,right:0,zIndex:500,
         padding:"0 6vw", height:"80px",
@@ -336,17 +326,15 @@ export default function LandingPage() {
             { name: "Security", href: "#security" },
             { name: "Pricing", href: "#pricing" }
           ].map(n => <a key={n.name} href={n.href} className="nav-link">{n.name}</a>)}
-          
+
           <div style={{ width:"1px",height:"16px",background:"rgba(255,255,255,.15)" }} />
           <Link to="/login" className="nav-link">Log in</Link>
           <Link to="/signup" className="btn-main" style={{ padding:"10px 24px",fontSize:".8rem",boxShadow:"none",borderRadius:"6px" }}>Get Started</Link>
         </div>
       </nav>
 
-      {/* ══ HERO ══ */}
       <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 6vw 80px",position:"relative",overflow:"hidden" }}>
-        
-        {/* Holographic glowing orb background element */}
+
         <div ref={orbRef} style={{
           position:"absolute",right:"10%",top:"30%",
           transform:"translate3d(0,0,0)",
@@ -358,7 +346,6 @@ export default function LandingPage() {
 
         <div style={{ maxWidth:"840px",position:"relative",zIndex:2, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center" }}>
 
-          {/* Hero headline — word by word scrolling animation */}
           <RevealText
             tag="h1"
             delay={0.1}
@@ -391,7 +378,6 @@ export default function LandingPage() {
             <Link to="/login" className="btn-line">View Dashboard</Link>
           </BlurFadeUp>
 
-          {/* Stats */}
           <div style={{ display:"flex",gap:"70px",flexWrap:"wrap",justifyContent:"center",paddingTop:"40px",borderTop:"1px solid rgba(255,255,255,.05)" }}>
             <Stat value="$2.4B+" label="Daily Volume" delay={0.9} />
             <Stat value="1.8M+" label="Active Users" delay={1.0} />
@@ -400,7 +386,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ TICKER ══ */}
       <div style={{ borderTop:"1px solid rgba(255,255,255,.03)",borderBottom:"1px solid rgba(255,255,255,.03)",padding:"24px 0",overflow:"hidden",position:"relative",zIndex:2,background:"rgba(255,255,255,0.005)" }}>
         <div style={{ display:"flex",width:"max-content",animation:"ticker 30s linear infinite" }}>
           {[...Array(2)].map((_,ri)=>(
@@ -421,7 +406,6 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* ══ FEATURES ══ */}
       <section id="features" style={{ padding:"140px 6vw",position:"relative",zIndex:2,scrollMarginTop:"120px" }}>
         <div style={{ maxWidth:"1200px",margin:"0 auto" }}>
           <div style={{ marginBottom:"80px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -462,12 +446,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ BENTO UI / SECURITY ══ */}
       <section id="security" style={{ padding:"0 6vw 140px",position:"relative",zIndex:2,scrollMarginTop:"120px" }}>
         <div style={{ maxWidth:"1200px",margin:"0 auto" }}>
           <div style={{ display:"grid",gridTemplateColumns:"1.2fr 1fr",gridTemplateRows:"auto auto",gap:"24px" }}>
 
-            {/* Left tall */}
             <BlurFadeUp delay={0} style={{ gridRow:"span 2" }}>
               <div style={{
                 height:"100%",minHeight:"450px",
@@ -478,7 +460,7 @@ export default function LandingPage() {
                 position:"relative",overflow:"hidden",
                 display:"flex",flexDirection:"column",justifyContent:"flex-end",
               }}>
-                {/* floating sleek graphic */}
+
                 <div style={{ position:"absolute",top:"50px",right:"50px", width:"180px",height:"180px", borderRadius:"50%", background:"radial-gradient(circle,rgba(255,255,255,.08) 0%,transparent 70%)", animation:"floatY 6s ease-in-out infinite", display:"flex",alignItems:"center",justifyContent:"center" }}>
                    <div style={{
                      width: "120px", height: "120px",
@@ -505,7 +487,6 @@ export default function LandingPage() {
               </div>
             </BlurFadeUp>
 
-            {/* Right top */}
             <BlurFadeUp delay={0.2}>
               <div style={{ padding:"48px",border:"1px solid rgba(255,255,255,.06)",borderRadius:"20px",background:"rgba(255,255,255,.015)", position:"relative", overflow:"hidden" }}>
                 <div style={{ color:"#fff", marginBottom:"20px", padding:"12px", background:"rgba(255,255,255,0.05)", display:"inline-block", borderRadius:"12px" }}>{Icons.lock}</div>
@@ -514,7 +495,6 @@ export default function LandingPage() {
               </div>
             </BlurFadeUp>
 
-            {/* Right bottom */}
             <BlurFadeUp delay={0.4}>
               <div style={{ padding:"48px",border:"1px solid rgba(255,255,255,.12)",borderRadius:"20px",background:"rgba(255,255,255,.04)", boxShadow:"0 10px 40px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.08)" }}>
                 <div style={{ color:"#fff", marginBottom:"20px", padding:"12px", background:"rgba(255,255,255,0.08)", display:"inline-block", borderRadius:"12px" }}>{Icons.lightning}</div>
@@ -526,7 +506,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ PRICING ══ */}
       <section id="pricing" style={{ padding:"0 6vw 140px",position:"relative",zIndex:2,scrollMarginTop:"120px" }}>
         <div style={{ maxWidth:"1200px",margin:"0 auto" }}>
           <div style={{ marginBottom:"80px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -581,7 +560,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ CTA ══ */}
       <section style={{ padding:"0 6vw 160px",position:"relative",zIndex:2 }}>
         <div style={{ maxWidth:"1000px",margin:"0 auto" }}>
           <BlurFadeUp delay={0}>
@@ -594,7 +572,7 @@ export default function LandingPage() {
               position:"relative",overflow:"hidden",
               boxShadow:"0 30px 80px rgba(0,0,0,0.5)",
             }}>
-              {/* aesthetic grid top/bottom within CTA */}
+
               <div style={{ position:"absolute", inset:0, background:"linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px)", backgroundSize:"40px 40px", maskImage:"radial-gradient(ellipse 60% 60% at 50% 50%, black 10%, transparent 100%)", pointerEvents:"none" }} />
 
               <RevealText
@@ -626,7 +604,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ FOOTER ══ */}
       <footer style={{
         borderTop:"1px solid rgba(255,255,255,.05)",
         padding:"48px 6vw",

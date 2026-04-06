@@ -26,6 +26,18 @@ export const createInitialTransaction = async (payload) => {
   return data;
 };
 
+export const systemWithdrawal = async (payload) => {
+  const res = await fetch(`${API}/api/transaction/system/withdraw`, {
+    method: 'POST',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+    credentials: 'include'
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to successfully withdraw amount');
+  return data;
+};
+
 export const getAllTransactions = async () => {
   const res = await fetch(`${API}/api/transaction/all`, {
     method: 'GET',

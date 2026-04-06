@@ -11,4 +11,11 @@ trasactionRouter.post("/create", authmiddleware.authenticate, transactionControl
  */
 trasactionRouter.post("/initial", systemUserMiddleware.authenticateSystemUser, transactionController.createInitialTransaction );
 trasactionRouter.get("/all", authmiddleware.authenticate, transactionController.getAllTransactions );
+
+/**
+ * Create a system withdrawal (System User only)
+ * POST /api/transactions/system/withdraw
+ */
+trasactionRouter.post("/system/withdraw", systemUserMiddleware.authenticateSystemUser, transactionController.systemWithdraw);
+
 export default trasactionRouter;

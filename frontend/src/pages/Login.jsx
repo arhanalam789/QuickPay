@@ -15,7 +15,6 @@ export default function Login() {
     e.preventDefault();
     setError(null);
 
-    // Basic frontend validation
     if (!email || !password) {
       setError('Please fill in all fields.');
       return;
@@ -48,7 +47,7 @@ export default function Login() {
       position: "relative",
       overflow: "hidden"
     }}>
-      {/* Background glow */}
+
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "60vw", height: "60vw", borderRadius: "50%",
@@ -111,7 +110,7 @@ export default function Login() {
                 }} 
               />
             </div>
-            
+
             <button type="submit" disabled={isLoading} style={{
               width: "100%", padding: "14px", marginTop: "10px", borderRadius: "8px",
               background: isLoading ? "rgba(255,255,255,0.5)" : "linear-gradient(135deg, #fff 0%, #ccc 100%)", border: "none",
