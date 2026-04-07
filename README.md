@@ -34,10 +34,12 @@
 - [API Reference](#-api-reference)
   - [Auth Endpoints](#-auth-endpoints)
   - [Account Endpoints](#-account-endpoints)
+  - [Account Request Endpoints](#-account-request-endpoints)
   - [Transaction Endpoints](#-transaction-endpoints)
 - [Authentication Flow](#-authentication-flow)
 - [Session Management with Redis](#-session-management-with-redis)
 - [Transaction Engine](#-transaction-engine)
+- [Account Request Workflow](#-account-request-workflow)
 - [Data Models](#-data-models)
 - [Security](#-security)
 - [Deployment](#-deployment)
@@ -46,7 +48,7 @@
 
 ## 🌟 Overview
 
-QuickPay is a **full-stack fintech platform** simulating a real-world payment system. It supports multi-wallet accounts, peer-to-peer fund transfers, a system-level admin account for dispatching initial funds, and a real-time transaction ledger with expandable receipts.
+QuickPay is a **full-stack fintech platform** simulating a real-world payment system. It supports multi-wallet accounts, peer-to-peer fund transfers, a system-level admin account for dispatching initial funds, a **moderated account request approval workflow**, and a real-time transaction ledger with expandable receipts.
 
 Built with production concerns in mind:
 - **Atomic transactions** using MongoDB sessions and `withTransaction`
@@ -54,6 +56,7 @@ Built with production concerns in mind:
 - **Single active session** enforcement via Upstash Redis
 - **JWT + HttpOnly cookie** authentication
 - **Email notifications** via Nodemailer for all transaction events
+- **Moderated account creation** — users request accounts; system user approves and optionally funds them in one atomic operation
 
 ---
 
@@ -86,18 +89,24 @@ Built with production concerns in mind:
 │   │  Auth Routes │  │ Account Routes │  │  Transaction Routes  │  │
 │   └──────┬───────┘  └───────┬────────┘  └──────────┬───────────┘  │
 │          │                  │                       │              │
-│   ┌──────▼──────────────────▼───────────────────────▼───────────┐  │
+│   ┌──────┴──────────────────┴───────────────────────┴───────────┐  │
 │   │              Auth & SystemUser Middleware                    │  │
 │   │   JWT Verify → Redis Token Check → User Lookup              │  │
-│   └──────────────────────────────────────────────────────────────┘  │
+│   └─────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│   ┌─────────────────────────────────────────────────────────────┐  │
+│   │            Account Request Routes (NEW)                      │  │
+│   │   POST /request → GET /my → GET /all → PATCH /:id/review    │  │
+│   └─────────────────────────────────────────────────────────────┘  │
 └──────────────┬──────────────────────────────┬──────────────────────┘
                │                              │
     ┌──────────▼───────────┐    ┌─────────────▼──────────┐
     │   MongoDB (Atlas)    │    │  Upstash Redis          │
     │  Users, Accounts,    │    │  Active Session Store   │
     │  Transactions,       │    │  Key: user:{id}         │
-    │  Ledger, Blacklist   │    │  TTL: 3 days            │
-    └──────────────────────┘    └────────────────────────┘
+    │  Ledger, Blacklist,  │    │  TTL: 3 days            │
+    │  AccountRequests     │    └────────────────────────┘
+    └──────────────────────┘
 ```
 
 ---
@@ -140,15 +149,16 @@ Built with production concerns in mind:
 
 - 🔐 **JWT Authentication** — Secure login/register with HttpOnly cookie tokens
 - 🔄 **Single Active Session** — Upstash Redis invalidates old sessions on new login
-- 💳 **Multi-Wallet Support** — Users can create multiple accounts/wallets
+- 💳 **Multi-Wallet Support** — Users can hold multiple accounts/wallets
+- 📋 **Account Request Workflow** — Users submit requests; the system user approves or rejects them
 - 💸 **P2P Transfers** — Send funds between any two accounts by account ID
 - 🧾 **Double-Entry Ledger** — Every transaction creates debit + credit ledger entries
 - 🔑 **Idempotency Keys** — Prevents duplicate transactions on client retries
 - ⚛️ **Atomic Transactions** — MongoDB sessions with `withTransaction` for rollback safety
 - 📊 **Transaction Ledger UI** — Expandable receipt view with full metadata
 - 📈 **Monthly Spend Analytics** — Trend comparison against prior month
-- 📧 **Email Notifications** — Automatic emails to both sender and receiver
-- 👑 **System User** — Admin-level account for dispatching initial funds to new users
+- 📧 **Email Notifications** — Automatic emails to both sender and receiver, and on request approval
+- 👑 **System User** — Admin-level account for approving requests and dispatching initial funds
 - 🌐 **CORS-Ready** — Properly configured for cross-domain Vercel ↔ Render communication
 
 ---
@@ -171,19 +181,22 @@ QuickPay/
 │       ├── models/
 │       │   ├── user.model.ts            # User schema
 │       │   ├── account.model.ts         # Account schema + getBalance()
+│       │   ├── accountRequest.model.ts  # AccountRequest schema (NEW)
 │       │   ├── transaction.model.ts     # Transaction schema
 │       │   ├── ledger.model.ts          # Double-entry ledger schema
 │       │   └── blackList.model.ts       # JWT token blacklist schema
 │       ├── controllers/
 │       │   ├── auth.controller.ts       # register, login, logout
 │       │   ├── account.controller.ts    # createAccount, getUserAccounts, getAccountDetailsById
-│       │   └── transaction.controller.ts # createTransaction, createInitialTransaction, getAllTransactions
+│       │   ├── accountRequest.controller.ts # createRequest, getMyRequests, getAllRequests, reviewRequest (NEW)
+│       │   └── transaction.controller.ts    # createTransaction, createInitialTransaction, getAllTransactions
 │       ├── middleware/
 │       │   ├── auth.middleware.ts       # JWT + Redis session validation
 │       │   └── systemUserAuth.middleware.ts # System-only route guard
 │       └── routes/
 │           ├── auth.routes.ts
 │           ├── account.routes.ts
+│           ├── accountRequest.routes.ts # (NEW)
 │           └── transaction.routes.ts
 │
 └── frontend/
@@ -197,12 +210,13 @@ QuickPay/
         ├── context/
         │   └── AuthContext.jsx          # Global auth state (login/logout/register)
         ├── api/
-        │   ├── baseUrl.js               # Dynamic base URL (dev vs production)
         │   ├── authService.js           # Login, register, logout
+        │   ├── authStorage.js           # Token storage helpers
         │   ├── accountService.js        # Fetch accounts, details, create
+        │   ├── accountRequestService.js # Submit, fetch, and review requests (NEW)
         │   └── transactionService.js    # Create tx, initial tx, get all
         ├── pages/
-        │   ├── UserDashboard.jsx        # Main app dashboard
+        │   ├── UserDashboard.jsx        # Main app dashboard (request flow + system review UI)
         │   └── LoginPage.jsx / RegisterPage.jsx
         └── components/
             ├── Sidebar.jsx
@@ -217,7 +231,7 @@ QuickPay/
 ### Prerequisites
 
 - Node.js ≥ 18
-- MongoDB Atlas account (or local MongoDB)
+- MongoDB Atlas account (or local MongoDB with replica set for transactions)
 - Upstash Redis account → [upstash.com](https://upstash.com)
 - A Gmail account (for Nodemailer)
 
@@ -265,14 +279,14 @@ The frontend will start at `http://localhost:5173`.
 
 ### System Account Seed
 
-QuickPay has a special **system user** that can dispatch initial funds to new users. To seed this account:
+QuickPay has a special **system user** that approves account requests and can dispatch initial funds. To seed this account:
 
 ```bash
 cd backend
 npm run seed:system
 ```
 
-This creates a user with `systemUser: true` and an associated account. Log in with the system credentials and use the **"Force Dispatch"** form on the dashboard to credit any account.
+This creates a user with `systemUser: true` and an associated account. Log in with the system credentials to access the **Account Requests** management panel on the dashboard, where you can approve or reject pending user requests and optionally fund new accounts on approval.
 
 ---
 
@@ -294,6 +308,9 @@ REDIS_TOKEN=your_upstash_token
 # Email (Gmail)
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_gmail_app_password
+
+# System User
+SYSTEM_EMAIL=su@gmail.com
 
 # App
 PORT=3000
@@ -517,6 +534,140 @@ Get details and live balance for a specific account.
 |---|---|
 | `404` | `"Account not found"` |
 | `500` | `"Server error while fetching account details"` |
+
+---
+
+### 📋 Account Request Endpoints
+
+> Users submit account requests instead of creating accounts directly. The system user reviews and approves/rejects them. All routes require `authenticate` middleware.
+
+---
+
+#### `POST /api/account-requests/request`
+
+Submit a new account request. Only one pending request is allowed at a time per user.
+
+**Headers:** Cookie or Bearer token.
+
+**Request Body:** _(none required)_
+
+**Success Response `201`:**
+```json
+{
+  "message": "Account request submitted successfully",
+  "request": {
+    "_id": "685req001...",
+    "user": "682abc123...",
+    "status": "pending",
+    "createdAt": "2026-04-07T10:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|---|---|
+| `400` | `"You already have a pending account request."` |
+| `500` | `"Server error while submitting request"` |
+
+---
+
+#### `GET /api/account-requests/my`
+
+Get all account requests submitted by the authenticated user.
+
+**Success Response `200`:**
+```json
+{
+  "requests": [
+    {
+      "_id": "685req001...",
+      "user": "682abc123...",
+      "status": "approved",
+      "reviewNote": "Welcome!",
+      "createdAccount": "683xyz789...",
+      "createdAt": "2026-04-07T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/account-requests/all`
+
+Get all account requests from all users. **System user only.**
+
+**Success Response `200`:**
+```json
+{
+  "requests": [
+    {
+      "_id": "685req001...",
+      "user": { "name": "Arhan Alam", "email": "arhan@example.com" },
+      "status": "pending",
+      "createdAt": "2026-04-07T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Errors:**
+| Status | Message |
+|---|---|
+| `403` | `"Access denied"` |
+
+---
+
+#### `PATCH /api/account-requests/:requestId/review`
+
+Approve or reject a pending request. **System user only.**
+
+On **approval**, this atomically:
+1. Creates a new `Account` for the user
+2. (If `initialAmount > 0`) Creates a `Transaction` from system → new account
+3. Creates debit + credit `Ledger` entries
+4. Marks the transaction `completed`
+5. Updates the request status to `approved`
+6. Sends an approval email to the user
+
+**Request Body:**
+```json
+{
+  "action": "approve",
+  "reviewNote": "Welcome to QuickPay!",
+  "initialAmount": 5000
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `action` | `"approve" \| "reject"` | ✅ | Decision |
+| `reviewNote` | `string` | ❌ | Optional note shown to user |
+| `initialAmount` | `number` | ❌ | Funds to credit on approval (INR) |
+
+**Success Response `200`:**
+```json
+{
+  "message": "Request approved and account created",
+  "request": {
+    "_id": "685req001...",
+    "status": "approved",
+    "reviewNote": "Welcome to QuickPay!",
+    "createdAccount": "683xyz789..."
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|---|---|
+| `400` | `"Request has already been reviewed"` |
+| `400` | `"Invalid action"` |
+| `403` | `"Access denied"` |
+| `404` | `"Request not found"` |
+| `500` | `"System user not found"` |
+| `500` | `"System user account not found"` |
 
 ---
 
@@ -760,6 +911,38 @@ Transactions use `session.withTransaction()` which provides:
 
 ---
 
+## 📋 Account Request Workflow
+
+QuickPay uses a **moderated account creation** flow instead of allowing users to create accounts directly.
+
+```
+User                          Backend                    System User
+  │                               │                           │
+  │── POST /request ─────────────►│ Creates pending request   │
+  │◄─ 201 { status: "pending" } ──│                           │
+  │                               │                           │
+  │                               │◄── GET /all ──────────────│
+  │                               │─── Returns all pending ──►│
+  │                               │                           │
+  │                               │◄── PATCH /:id/review ─────│
+  │                               │    { action: "approve",   │
+  │                               │      initialAmount: 5000 }│
+  │                               │                           │
+  │                               │── START MongoDB session ──│
+  │                               │   1. Create Account       │
+  │                               │   2. Create Transaction   │
+  │                               │   3. Create Ledger entries│
+  │                               │   4. Mark tx "completed"  │
+  │                               │   5. Update request       │
+  │                               │── COMMIT session ─────────│
+  │                               │── Send approval email ────►│ (to user)
+  │◄── GET /my (status: approved) │                           │
+```
+
+**Status lifecycle:** `pending` → `approved` | `rejected`
+
+---
+
 ## 🗄 Data Models
 
 ### User
@@ -777,6 +960,14 @@ Transactions use `session.withTransaction()` which provides:
 | `status` | `active \| inactive` | Default `active` |
 | `currency` | `String` | Default `INR` |
 | `balance` | _computed_ | Via `getBalance()` from Ledger |
+
+### AccountRequest _(NEW)_
+| Field | Type | Notes |
+|---|---|---|
+| `user` | `ObjectId → User` | Required |
+| `status` | `pending \| approved \| rejected` | Default `pending` |
+| `reviewNote` | `String` | Optional note from reviewer |
+| `createdAccount` | `ObjectId → Account` | Populated on approval |
 
 ### Transaction
 | Field | Type | Notes |
@@ -809,6 +1000,7 @@ Transactions use `session.withTransaction()` which provides:
 | Session invalidation | Upstash Redis single-session enforcement |
 | CORS | Whitelist of allowed origins only |
 | System user isolation | Separate middleware, `systemUser` flag hidden from normal queries |
+| Account request gating | Users cannot create accounts directly; all creation goes through approval |
 
 ---
 
@@ -824,7 +1016,7 @@ Transactions use `session.withTransaction()` which provides:
 
 **Required env vars on Render:**
 ```
-MONGO_URI, JWT_SECRET, REDIS_URL, REDIS_TOKEN, EMAIL_USER, EMAIL_PASS, NODE_ENV=production
+MONGO_URI, JWT_SECRET, REDIS_URL, REDIS_TOKEN, EMAIL_USER, EMAIL_PASS, SYSTEM_EMAIL, NODE_ENV=production
 ```
 
 ### Vercel (Frontend)
