@@ -14,11 +14,11 @@ export const loginUser = async (email, password) => {
   return data;
 };
 
-export const registerUser = async (name, email, password) => {
+export const registerUser = async (name, email, password, mpin) => {
   const res = await fetch(`${API}/api/auth/register`, {
     method: 'POST',
     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, mpin }),
     credentials: 'include'
   });
   const data = await res.json();

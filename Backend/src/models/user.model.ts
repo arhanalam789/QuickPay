@@ -6,9 +6,11 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
+  mpin: string;
   systemUser:boolean;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
+  compareMpin(candidateMpin: string): Promise<boolean>;
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -30,6 +32,11 @@ const userSchema = new mongoose.Schema<IUser>(
       required: [true, "Password is required"],
       select: false,   
     },
+    mpin: {
+      type: String,
+      required: [true, "MPIN is required"],
+      select: false,
+    },
     systemUser: {
       type: Boolean,
       default: false,
@@ -43,10 +50,15 @@ const userSchema = new mongoose.Schema<IUser>(
 );
 
 userSchema.pre("save", async function (this: any) {
-  if (!this.isModified("password")) return;
+  if (this.isModified("password")) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  if (this.isModified("mpin")) {
+    const salt = await bcrypt.genSalt(10);
+    this.mpin = await bcrypt.hash(this.mpin, salt);
+  }
 });  
 
 
@@ -54,6 +66,12 @@ userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
+}; 
+
+userSchema.methods.compareMpin = async function (
+  candidateMpin: string
+): Promise<boolean> {
+  return bcrypt.compare(candidateMpin, this.mpin);
 }; 
 
 

@@ -25,16 +25,19 @@ const clearAuthCookieOptions = {
  */  
 export const register = async (req: any, res: any) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, mpin } = req.body;
 
-    
+    if (!mpin) {
+      return res.status(400).json({ message: "MPIN is required" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email already in use" });
     }
 
 
-    const newUser: IUser = new User({ name, email, password });
+    const newUser: IUser = new User({ name, email, password, mpin });
     const token = jwt.sign({ id: newUser._id }, JWT_SECRET!, { expiresIn: "3d" });
     await redis.set(`user:${newUser._id}`, token, { ex: 3 * 24 * 60 * 60 });
     await newUser.save();

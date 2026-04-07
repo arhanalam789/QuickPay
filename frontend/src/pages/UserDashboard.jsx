@@ -22,6 +22,7 @@ export default function UserDashboard() {
   const [toAccount, setToAccount] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [txMpin, setTxMpin] = useState('');
   const [txLoading, setTxLoading] = useState(false);
   const [txMessage, setTxMessage] = useState(null);
 
@@ -152,8 +153,8 @@ export default function UserDashboard() {
     e.preventDefault();
     setTxMessage(null);
 
-    if (!toAccount || !amount || parseFloat(amount) <= 0 || !description.trim()) {
-      setTxMessage({ type: 'error', text: 'Please provide valid account ID, positive amount, and a description.' });
+    if (!toAccount || !amount || parseFloat(amount) <= 0 || !description.trim() || !txMpin || txMpin.length !== 4) {
+      setTxMessage({ type: 'error', text: 'Please provide valid account ID, positive amount, description, and 4-digit MPIN.' });
       return;
     }
 
@@ -180,7 +181,8 @@ export default function UserDashboard() {
           toAccount,
           amount: parseFloat(amount),
           idempotencyKey,
-          description: description.trim()
+          description: description.trim(),
+          mpin: txMpin
         });
         setTxMessage({ type: 'success', text: 'Transaction sent successfully!' });
 
@@ -191,6 +193,7 @@ export default function UserDashboard() {
       setToAccount('');
       setAmount('');
       setDescription('');
+      setTxMpin('');
     } catch (err) {
       if (!handleApiError(err)) {
         setTxMessage({ type: 'error', text: err.message || 'Transaction failed.' });
@@ -520,6 +523,23 @@ export default function UserDashboard() {
                                 className="w-full bg-[#000] border border-white/10 rounded-xl px-5 py-4 text-xs font-mono text-white focus:outline-none focus:border-white/30 transition-all placeholder:text-white/20"
                               />
                             </div>
+
+                            {!isSystemUser && (
+                              <div>
+                                <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold mb-3 pl-1">Transaction MPIN</p>
+                                <input 
+                                  type="password" 
+                                  maxLength="4"
+                                  placeholder="••••" 
+                                  value={txMpin}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    if (val.length <= 4) setTxMpin(val);
+                                  }}
+                                  className="w-full bg-[#000] border border-white/10 rounded-xl px-5 py-4 text-xs font-mono text-white focus:outline-none focus:border-white/30 transition-all placeholder:text-white/20"
+                                />
+                              </div>
+                            )}
 
                             <button 
                               disabled={txLoading}

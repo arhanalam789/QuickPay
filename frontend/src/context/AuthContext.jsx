@@ -20,8 +20,8 @@ export const AuthProvider = ({ children }) => {
     storeAuthSession(data);
   };
 
-  const register = async (name, email, password) => {
-    const data = await registerUser(name, email, password);
+  const register = async (name, email, password, mpin) => {
+    const data = await registerUser(name, email, password, mpin);
     setUser(data.user);
     storeAuthSession(data);
   };

@@ -13,10 +13,10 @@ export const createTransaction = async (req: any, res: any) => {
     /**
      * Input validation and basic checks
      */
-    const { fromAccount, toAccount, amount,idempotencyKey,description} = req.body;
+    const { fromAccount, toAccount, amount, idempotencyKey, description, mpin } = req.body;
 
-    if (!fromAccount || !toAccount || !amount || !idempotencyKey || !description) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!fromAccount || !toAccount || !amount || !idempotencyKey || !description || !mpin) {
+      return res.status(400).json({ message: "Missing required fields, including MPIN" });
     }   
 
     const fromAcc = await Account.findById(fromAccount);
@@ -29,6 +29,20 @@ export const createTransaction = async (req: any, res: any) => {
     if (fromAcc.status !== "active" || toAcc.status !== "active") {
       return res.status(400).json({ message: "Both accounts must be active" });
     }
+
+    /**
+     * MPIN Validation
+     */
+    const senderUser = await User.findById(fromAcc.user).select("+mpin");
+    if (!senderUser) {
+      return res.status(404).json({ message: "Sender user not found" });
+    }
+
+    const isMpinMatch = await senderUser.compareMpin(mpin);
+    if (!isMpinMatch) {
+      return res.status(401).json({ message: "Incorrect MPIN" });
+    }
+
     /**
      * Idempotency check - ensures that if the same request is made multiple times with the same idempotency key, only one transaction will be processed. This is crucial for preventing duplicate transactions in case of network issues or client retries.
      */

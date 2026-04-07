@@ -8,6 +8,7 @@ export default function Signup() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mpin, setMpin] = useState('');
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -29,6 +30,9 @@ export default function Signup() {
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       return 'Password must contain at least one uppercase letter, one lowercase letter, and one number.';
     }
+    if (!mpin || mpin.length !== 4 || !/^\d+$/.test(mpin)) {
+      return 'MPIN must be exactly 4 digits.';
+    }
     return null;
   };
 
@@ -45,7 +49,7 @@ export default function Signup() {
     setIsLoading(true);
     try {
       const fullName = `${firstName} ${lastName}`.trim();
-      await register(fullName, email, password);
+      await register(fullName, email, password, mpin);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -153,6 +157,24 @@ export default function Signup() {
                 placeholder="••••••••" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: "100%", padding: "12px 16px", borderRadius: "8px",
+                  border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)",
+                  color: "#fff", fontSize: "0.95rem", outline: "none"
+                }} 
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", color: "rgba(255,255,255,0.7)", marginBottom: "8px" }}>4-Digit MPIN (for transactions)</label>
+              <input 
+                type="password" 
+                maxLength="4"
+                placeholder="••••" 
+                value={mpin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 4) setMpin(val);
+                }}
                 style={{
                   width: "100%", padding: "12px 16px", borderRadius: "8px",
                   border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)",
