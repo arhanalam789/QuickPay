@@ -4,7 +4,7 @@
 
 ### A production-ready, full-stack digital payment platform built with Node.js, React, MongoDB, and Upstash Redis.
 
-[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Vercel-black?style=for-the-badge)](https://quick-pay-silk.vercel.app)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Vercel-black?style=for-the-badge)](https://quick-pay-nine.vercel.app/)
 [![Backend API](https://img.shields.io/badge/🚀_Backend_API-Render-46E3B7?style=for-the-badge)](https://quickpay-7rda.onrender.com)
 [![License](https://img.shields.io/badge/License-ISC-blue?style=for-the-badge)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22.x-green?style=for-the-badge&logo=node.js)](https://nodejs.org)

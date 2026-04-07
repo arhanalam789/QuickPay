@@ -366,13 +366,13 @@ export default function UserDashboard() {
       />
 
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-white/[0.03] rounded-full blur-[120px] animate-float-slow" />
-        <div className="absolute bottom-[20%] left-[-10%] w-[350px] h-[350px] bg-white/[0.02] rounded-full blur-[100px] animate-float-fast" />
-        <div className="absolute top-[40%] left-[30%] w-[250px] h-[250px] bg-white/[0.015] rounded-full blur-[80px] animate-rotate-slow" />
+        <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-white/[0.03] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[20%] left-[-10%] w-[350px] h-[350px] bg-white/[0.02] rounded-full blur-[100px]" />
+        <div className="absolute top-[40%] left-[30%] w-[250px] h-[250px] bg-white/[0.015] rounded-full blur-[80px]" />
 
-        <div className="absolute top-[20%] right-[30%] w-[200px] h-[200px] bg-purple-500/[0.05] rounded-full blur-[90px] animate-pulse animation-delay-2000" />
-        <div className="absolute bottom-[30%] right-[10%] w-[300px] h-[300px] bg-blue-500/[0.04] rounded-full blur-[100px] animate-float-slow animation-delay-4000" />
-        <div className="absolute bottom-[5%] left-[20%] w-[200px] h-[200px] bg-emerald-500/[0.03] rounded-full blur-[80px] animate-float-fast animation-delay-1000" />
+        <div className="absolute top-[20%] right-[30%] w-[200px] h-[200px] bg-purple-500/[0.05] rounded-full blur-[90px]" />
+        <div className="absolute bottom-[30%] right-[10%] w-[300px] h-[300px] bg-blue-500/[0.04] rounded-full blur-[100px]" />
+        <div className="absolute bottom-[5%] left-[20%] w-[200px] h-[200px] bg-emerald-500/[0.03] rounded-full blur-[80px]" />
       </div>
 
       <main className="flex-1 ml-0 md:ml-72 h-[calc(100vh-80px)] md:h-screen overflow-y-auto custom-scrollbar relative z-10 bg-transparent mt-[80px] md:mt-0">
