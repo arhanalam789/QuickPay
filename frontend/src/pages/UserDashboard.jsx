@@ -45,6 +45,7 @@ export default function UserDashboard() {
   const [reviewNotes, setReviewNotes] = useState({});
   const [reviewAmounts, setReviewAmounts] = useState({});
   const [reviewLoading, setReviewLoading] = useState({});
+  const [directoryAccounts, setDirectoryAccounts] = useState([]);
 
   const toggleReveal = (e, accId) => {
     e.stopPropagation();
@@ -144,11 +145,21 @@ export default function UserDashboard() {
     setLoading(true);
     try {
       if (isSystemUser) {
-        const accs = await fetchAllUsersAccounts();
-        setAccounts(accs);
-        // Sum total balances for overview system user
-        const total = accs.reduce((acc, curr) => acc + (curr.balance || 0), 0);
-        setBalance(total);
+        // Fetch all accounts for the directory view
+        const allAccs = await fetchAllUsersAccounts();
+        setDirectoryAccounts(allAccs);
+
+        // Fetch system user's own accounts for balance and spend metrics
+        const ownAccs = await fetchUserAccounts();
+        setAccounts(ownAccs);
+        
+        if (ownAccs.length > 0) {
+          const totalOwnBalance = ownAccs.reduce((acc, curr) => acc + (curr.balance || 0), 0);
+          setBalance(totalOwnBalance);
+          if (!selectedAccount) setSelectedAccount(ownAccs[0]);
+        } else {
+          setBalance(0);
+        }
       } else {
         const accs = await fetchUserAccounts();
         setAccounts(accs);
@@ -306,7 +317,7 @@ export default function UserDashboard() {
     return false;
   };
 
-  const { currentMonthSpend, trendPercent } = React.useMemo(() => {
+  const { currentMonthSpend, trendPercent, dailySpendingData } = React.useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -317,16 +328,35 @@ export default function UserDashboard() {
     let current = 0;
     let past = 0;
 
+    // Last 10 days for chart
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const chartData = [...Array(10)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (9 - i));
+      return {
+        dateStr: d.toDateString(),
+        label: days[d.getDay()],
+        amount: 0
+      };
+    });
+
     activities.forEach(tx => {
       const txDate = new Date(tx.createdAt);
       if (tx.status === 'completed') {
         const isCredit = Array.isArray(accounts) && accounts.some(acc => tx.toAccount?._id === acc._id) || tx.toAccount?.user?.toString() === user?.id;
+        
+        // Month calc
         if (!isCredit) {
           if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
             current += (tx.amount || 0);
           } else if (txDate.getMonth() === lastMonth && txDate.getFullYear() === lastMonthYear) {
             past += (tx.amount || 0);
           }
+
+          // Daily chart calc
+          const txDateStr = txDate.toDateString();
+          const dayMatch = chartData.find(d => d.dateStr === txDateStr);
+          if (dayMatch) dayMatch.amount += (tx.amount || 0);
         }
       }
     });
@@ -340,7 +370,8 @@ export default function UserDashboard() {
 
     return { 
       currentMonthSpend: current, 
-      trendPercent: parseFloat(trend.toFixed(1)) 
+      trendPercent: parseFloat(trend.toFixed(1)),
+      dailySpendingData: chartData
     };
   }, [activities, accounts, user]);
 
@@ -349,6 +380,43 @@ export default function UserDashboard() {
   return (
     <div className="min-h-screen bg-[#030303] text-white flex flex-col md:flex-row select-none overflow-hidden font-['Inter']">
       
+      {/* Loading Overlay - Terminal Style */}
+      {(txLoading || withdrawLoading) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#030303]/95 backdrop-blur-3xl transition-opacity animate-in fade-in duration-300">
+          <div className="w-[90%] max-w-md p-8 rounded-3xl border border-emerald-500/20 bg-black/60 shadow-[0_0_50px_rgba(16,185,129,0.05)] font-mono backdrop-blur-md relative overflow-hidden">
+            {/* Scanline effect */}
+            <div className="absolute inset-0 w-full h-full bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-50 z-10"></div>
+            
+            <div className="relative z-20">
+              <div className="flex items-center gap-2 mb-8 border-b border-emerald-500/20 pb-4">
+                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60"></div>
+                 <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60"></div>
+                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60 shadow-[0_0_10px_#10b981]"></div>
+                 <span className="ml-4 text-[10px] text-emerald-500/50 uppercase tracking-[0.3em]">Sys_Terminal_v1.0</span>
+              </div>
+              
+              <div className="space-y-4 text-xs md:text-sm">
+                 <p className="text-emerald-400">$&gt; INITIALIZING_SECURE_NODE...</p>
+                 <p className="text-white/60 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150 fill-mode-both">$&gt; ESTABLISHING_HANDSHAKE [OK]</p>
+                 <p className="text-white/60 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300 fill-mode-both">$&gt; ENCRYPTING_PAYLOAD...</p>
+                 
+                 <div className="flex items-center gap-3 pt-6 border-t border-white/5 mt-6 border-dashed">
+                   <div className="animate-spin w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full"></div>
+                   <span className="text-emerald-400 font-bold tracking-widest uppercase text-sm">
+                     {txLoading ? 'EXECUTING_TRANSFER' : 'FORCING_WITHDRAWAL'}
+                   </span>
+                   <span className="w-1.5 h-4 bg-emerald-400 animate-pulse ml-0.5" style={{ animationDuration: '0.8s' }}></span>
+                 </div>
+              </div>
+              
+              <div className="mt-8 w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                 <div className="h-full bg-emerald-500 animate-[pulse_1.5s_ease-in-out_infinite]" style={{ width: '75%', boxShadow: '0 0 10px #10b981' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between p-6 border-b border-white/5 bg-[#030303]/80 backdrop-blur-3xl z-20">
         <div className="flex items-center gap-2">
@@ -424,8 +492,8 @@ export default function UserDashboard() {
                       icon="📈"
                     />
                     <StatCard 
-                      title="Active Wallets" 
-                      value={accounts.length} 
+                      title={isSystemUser ? "Global Accounts" : "Active Wallets"} 
+                      value={isSystemUser ? directoryAccounts.length : accounts.length} 
                       icon="💳"
                     />
                     <StatCard 
@@ -460,20 +528,27 @@ export default function UserDashboard() {
 
                       <div className="p-8 rounded-3xl border border-white/5 bg-white/[0.01] backdrop-blur-3xl">
                         <div className="flex justify-between items-center mb-8">
-                          <h3 className="font-['Syne'] font-bold text-white/80">Asset Allocation</h3>
+                          <h3 className="font-['Syne'] font-bold text-white/80">Financial Velocity</h3>
                           <div className="flex gap-2 text-[10px] tracking-widest uppercase text-white/30">
-                            <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">Weekly</span>
-                            <span className="px-2 py-1 text-white/10 hover:text-white/40 cursor-pointer">Monthly</span>
+                            <span className="px-2 py-1 bg-white/5 rounded-md border border-white/5">Trend</span>
+                            <span className="px-2 py-1 text-white/10 hover:text-white/40 cursor-pointer">Last 10 Days</span>
                           </div>
                         </div>
-                        <div className="h-48 w-full flex items-end gap-3 justify-between px-2">
-                           {[40, 65, 35, 85, 45, 95, 60, 50, 75, 45].map((h, i) => (
-                             <div key={i} className="flex-1 bg-gradient-to-t from-white/10 to-white/30 rounded-t-lg transition-all duration-500 hover:to-white hover:from-white/50 cursor-pointer relative group" style={{ height: `${h}%` }}>
-                               <div className="absolute -top-10 left-1/2 -translate-x-1/2 p-2 bg-white text-black text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                  ₹{h * 123}
+                        <div className="h-48 w-full flex items-end gap-3 justify-between px-2 pt-10">
+                           {dailySpendingData.map((day, i) => {
+                             const max = Math.max(...dailySpendingData.map(d => d.amount), 1);
+                             const h = Math.max((day.amount / max) * 100, 5); // min height 5%
+                             return (
+                               <div key={i} className="flex-1 flex flex-col items-center gap-3 h-full justify-end">
+                                 <div className="w-full bg-gradient-to-t from-white/10 to-white/30 rounded-t-lg transition-all duration-500 hover:to-white hover:from-white/50 cursor-pointer relative group" style={{ height: `${h}%` }}>
+                                   <div className="absolute -top-10 left-1/2 -translate-x-1/2 p-2 bg-white text-black text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                                      ₹{day.amount.toLocaleString('en-IN')}
+                                   </div>
+                                 </div>
+                                 <span className="text-[9px] uppercase tracking-tighter text-white/20 font-bold">{day.label}</span>
                                </div>
-                             </div>
-                           ))}
+                             );
+                           })}
                         </div>
                       </div>
 
@@ -627,15 +702,20 @@ export default function UserDashboard() {
                     )}
                   </div>
 
-                  {accounts.length === 0 ? (
+                  {isSystemUser && directoryAccounts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-32 border border-white/5 rounded-[40px] bg-white/[0.01]">
                        <div className="h-16 w-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-3xl mb-6 opacity-40">💳</div>
-                       <p className="text-white/40 text-sm font-medium">{isSystemUser ? "No users found in the system." : "No accounts found in this profile."}</p>
-                       {!isSystemUser && <button onClick={handleCreateAccount} disabled={requestSubmitting} className="mt-8 text-xs font-bold text-white/60 hover:text-white border-b border-white/20 hover:border-white pb-1 transition-all disabled:opacity-50">{requestSubmitting ? 'Submitting...' : 'Request First Account'}</button>}
+                       <p className="text-white/40 text-sm font-medium">No users found in the system.</p>
+                    </div>
+                  ) : !isSystemUser && accounts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-32 border border-white/5 rounded-[40px] bg-white/[0.01]">
+                       <div className="h-16 w-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-3xl mb-6 opacity-40">💳</div>
+                       <p className="text-white/40 text-sm font-medium">No accounts found in this profile.</p>
+                       <button onClick={handleCreateAccount} disabled={requestSubmitting} className="mt-8 text-xs font-bold text-white/60 hover:text-white border-b border-white/20 hover:border-white pb-1 transition-all disabled:opacity-50">{requestSubmitting ? 'Submitting...' : 'Request First Account'}</button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       {accounts.map(acc => (
+                       {(isSystemUser ? directoryAccounts : accounts).map(acc => (
                          <div key={acc._id} onClick={() => !isSystemUser && handleAccountChange(acc._id)} className={`relative flex flex-col p-10 rounded-[40px] border transition-all duration-500 group ${!isSystemUser ? 'cursor-pointer hover:scale-[1.02]' : ''} ${
                            selectedAccount?._id === acc._id && !isSystemUser
                              ? 'bg-gradient-to-br from-white/10 via-white/[0.05] to-transparent border-white/20' 
